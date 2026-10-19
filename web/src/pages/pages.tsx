@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import type { Briefing, Item, Section } from "@shared/schema";
-import { formatDateTimeIST, formatLongDateIST } from "@shared/ist";
+import { formatDateTimeIST, formatLongDateIST, greetingIST, nameFromGreetingTitle } from "@shared/ist";
 import { Segmented } from "../components/nav.tsx";
 import { ItemView, NotesPanel } from "../components/sections.tsx";
 import { Chip, Icon } from "../components/ui.tsx";
@@ -34,6 +34,13 @@ function Group({ title, count, children }: { title: string; count?: number; chil
 }
 
 /* ---------------- Today ---------------- */
+/** Salutation and emoji for the current IST hour, with the name taken from the document title. */
+function greeting(title: string, now: Date): string {
+  const g = greetingIST(now);
+  const name = nameFromGreetingTitle(title);
+  return `${g.text}${name ? `, ${name}` : ""} ${g.emoji}`;
+}
+
 export function TodayPage(p: PageProps) {
   const { briefing: b } = p;
   const ctx = ctxOf(p);
@@ -46,7 +53,7 @@ export function TodayPage(p: PageProps) {
     <>
       <div className="hero fade-in">
         <span className="eyebrow">{p.sourceKind === "upload" ? "Uploaded file" : isToday ? "Today" : "Not today"}</span>
-        <h2 className="hero-title">{b.title}</h2>
+        <h2 className="hero-title">{greeting(b.title, p.now)}</h2>
         <p className="date">{b.date ? formatLongDateIST(b.date) : "Date unknown"}{b.dateSource === "content" ? " (read from the document)" : ""}</p>
         <div className="meta-row">
           {!isToday && p.sourceKind !== "upload" && <Chip tone="warn">Showing {b.date ?? "an undated file"}, today is {p.todayIST}</Chip>}

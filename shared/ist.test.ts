@@ -84,3 +84,31 @@ describe("countdownIST", () => {
     expect(countdownIST("2026-10-19", new Date("2026-10-19T18:30:00Z")).state).toBe("overdue");
   });
 });
+
+import { greetingIST, nameFromGreetingTitle } from "./ist.ts";
+
+describe("greetingIST", () => {
+  const at = (iso: string) => greetingIST(new Date(iso)).text;
+  it("follows the IST hour, not UTC", () => {
+    expect(at("2026-10-19T00:00:00Z")).toBe("Good morning"); // 05:30 IST
+    expect(at("2026-10-18T23:29:00Z")).toBe("Good night"); // 04:59 IST
+    expect(at("2026-10-19T06:29:00Z")).toBe("Good morning"); // 11:59 IST
+    expect(at("2026-10-19T06:30:00Z")).toBe("Good afternoon"); // 12:00 IST
+    expect(at("2026-10-19T11:29:00Z")).toBe("Good afternoon"); // 16:59 IST
+    expect(at("2026-10-19T11:30:00Z")).toBe("Good evening"); // 17:00 IST
+    expect(at("2026-10-19T15:29:00Z")).toBe("Good evening"); // 20:59 IST
+    expect(at("2026-10-19T15:30:00Z")).toBe("Good night"); // 21:00 IST
+  });
+  it("pairs each salutation with an emoji", () => {
+    expect(greetingIST(new Date("2026-10-19T04:00:00Z")).emoji).toBe("☀️");
+    expect(greetingIST(new Date("2026-10-19T16:30:00Z")).emoji).toBe("🌙");
+  });
+});
+
+describe("nameFromGreetingTitle", () => {
+  it("pulls the name out of the document title", () => {
+    expect(nameFromGreetingTitle("Good morning, Abhishek ☀️")).toBe("Abhishek");
+    expect(nameFromGreetingTitle("Good morning, Sample ☀️")).toBe("Sample");
+    expect(nameFromGreetingTitle("Briefing")).toBeNull();
+  });
+});
