@@ -15,9 +15,9 @@ Use `hashlib`, never Python's built-in `hash()` (it changes between processes). 
 problems in 13 topics. Checked: the same index in separate processes, and over a year every problem is used
 (4 to 13 times each).
 
-**Status:** applied to routine `trig_01E7UKfY4deYS2R5tQR7WKkp` only if the git log says so; otherwise paste the block
-below over STEP 4 at https://claude.ai/code/routines (replace the paragraph that starts with
-"STEP 4 - Question of the day", leave everything else as it is).
+**Status:** applied on 2026-10-19 to routine `trig_01E7UKfY4deYS2R5tQR7WKkp` (the stored prompt was diffed against the
+intended one: only STEP 4 changed). Runs after that use the hash. To change or restore it, edit the paragraph that starts with
+"STEP 4 - Question of the day" at https://claude.ai/code/routines or resend the prompt with `RemoteTrigger update`.
 
 ## Next eight days with this rule
 
