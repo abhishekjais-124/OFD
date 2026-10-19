@@ -112,8 +112,11 @@ describe("normalizeBriefing on the synthetic briefing", () => {
     expect(q).toMatchObject({ number: "1", title: "Two Sum", difficulty: "Easy", problemUrl: "https://leetcode.com/problems/two-sum/" });
     expect(q.topics).toEqual(["Array", "Hash Table"]);
     expect(q.companies).toEqual(["Example Corp", "Sample Inc"]);
-    expect(q.fields.map((f) => f.label)).toEqual(["In simple words", "Example", "Why today", "Study guide (hash maps)", "Full problem list"]);
+    expect(q.fields.map((f) => f.label)).toEqual([
+      "In simple words", "Example", "Constraints (from a mirror; confirm on LeetCode)", "Why today", "Study guide (hash maps)", "Full problem list",
+    ]);
     expect(q.fields[1]!.text).toContain("[0,1]");
+    expect(q.fields[2]!.text).toBe("2 ≤ length ≤ 10^4, exactly one valid answer.");
   });
 
   it("parses the job card and the roles table with the best-match badge", () => {

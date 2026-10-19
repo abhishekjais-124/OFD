@@ -3,8 +3,8 @@ import type { Field } from "../../shared/schema.ts";
 import type { LayoutLine } from "./layout.ts";
 
 // A label starts with a capital, is short, and does not end in a digit (so "Thu, 15 Jan 2026 07:46" is not one).
-const LABEL_RE = /^([A-Z][A-Za-z0-9 /()'’;,-]{0,44}[A-Za-z)]):\s*(.*)$/;
-const SPLIT_RE = /\s+·\s+(?=[A-Z][A-Za-z0-9 /()'’;,-]{0,44}[A-Za-z)]:(?:\s|$))/;
+const LABEL_RE = /^([A-Z][A-Za-z0-9 /()'’;,-]{0,58}[A-Za-z)]):\s*(.*)$/;
+const SPLIT_RE = /\s+·\s+(?=[A-Z][A-Za-z0-9 /()'’;,-]{0,58}[A-Za-z)]:(?:\s|$))/;
 
 export interface ParsedFields {
   /** Lines before the first label (titles, free text). */
