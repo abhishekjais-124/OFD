@@ -178,6 +178,7 @@ function GenericCard({ item, ctx, title }: { item: Item; ctx: Ctx; title?: strin
 const GLANCE_TARGET: Record<string, { tab: string; icon: () => ReactNode }> = {
   mail: { tab: "mail", icon: Icon.mail },
   calendar: { tab: "today", icon: Icon.calendar },
+  slack: { tab: "today", icon: Icon.bell },
   headlines: { tab: "news", icon: Icon.news },
   question: { tab: "learn", icon: Icon.learn },
   job: { tab: "learn", icon: Icon.briefcase },
