@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Briefing, BriefingResponse } from "@shared/schema";
+import { formatDateTimeIST } from "@shared/ist";
 import { api, type ApiResult } from "./api.ts";
-import { AppBar, TabBar, type Tab } from "./components/nav.tsx";
+import { AppBar, RefreshButton, TabBar, type RefreshState, type Tab } from "./components/nav.tsx";
 import { ErrorState, MissingState, OfflineBanner, Skeleton } from "./components/states.tsx";
 import { Icon, ToastProvider, useToast } from "./components/ui.tsx";
 import { actionKey, useDoneMap } from "./done.ts";
+import { usePullToRefresh } from "./pull.ts";
 import { skyKey, useWeather } from "./weather.tsx";
 import { LearnPage, MailPage, MoreLite, MorePage, NewsPage, SearchPage, TodayPage, type PageProps } from "./pages/pages.tsx";
 
@@ -44,6 +46,7 @@ function Shell() {
   const [source, setSource] = useState<Source>(initial.date ? { kind: "date", date: initial.date } : { kind: "today" });
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshState, setRefreshState] = useState<RefreshState>("idle");
   const [busy, setBusy] = useState<"refresh" | "reprocess" | "upload" | null>(null);
   const [fatal, setFatal] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -51,8 +54,15 @@ function Shell() {
   const [now, setNow] = useState(() => new Date());
   const weather = useWeather();
   const reqId = useRef(0);
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flash = useCallback((state: RefreshState) => {
+    setRefreshState(state);
+    if (flashTimer.current) clearTimeout(flashTimer.current);
+    flashTimer.current = setTimeout(() => setRefreshState("idle"), 1600);
+  }, []);
   const sourceRef = useRef(source);
   sourceRef.current = source;
+  const loadedRef = useRef<Loaded | null>(null);
 
   useEffect(() => {
     const onHash = () => {
@@ -93,23 +103,39 @@ function Shell() {
   const load = useCallback(async (s: Source, opts: { refresh?: boolean } = {}) => {
     if (s.kind === "upload") { setLoading(false); return; }
     const id = ++reqId.current;
+    const hadBriefing = loadedRef.current?.response.status === "ok";
     setFatal(null);
-    if (opts.refresh) setBusy("refresh"); else setLoading(true);
+    if (opts.refresh) { setBusy("refresh"); setRefreshState("busy"); } else setLoading(true);
     try {
       const res: ApiResult<BriefingResponse> = s.kind === "today" ? await api.today(opts.refresh) : await api.forDate(s.date, opts.refresh);
       if (id !== reqId.current) return;
-      setLoaded({ response: res.data, fromCache: res.fromCache, cachedAt: res.cachedAt });
-      if (opts.refresh && res.data.status === "ok") toast(res.data.cached ? "Already up to date" : "Refreshed");
+      // a failed refresh must not replace a briefing you are reading
+      if (opts.refresh && hadBriefing && res.data.status === "error") {
+        toast(`Couldn't refresh: ${res.data.error?.message ?? "unknown error"}. Showing the saved copy.`);
+        flash("fail");
+        return;
+      }
+      const loadedNow: Loaded = { response: res.data, fromCache: res.fromCache, cachedAt: res.cachedAt };
+      loadedRef.current = loadedNow;
+      setLoaded(loadedNow);
+      if (opts.refresh) {
+        const at = formatDateTimeIST(new Date()).split(", ")[1] ?? "";
+        if (res.data.status === "ok") { toast(res.data.cached ? `Up to date · checked ${at}` : "New version loaded from Drive"); flash("ok"); }
+        else if (res.data.status === "missing") { toast("Still no briefing for this day"); flash("idle"); }
+        else flash("fail");
+      }
     } catch (err) {
       if (id !== reqId.current) return;
-      setFatal((err as Error).message);
+      if (opts.refresh && hadBriefing) { toast("Couldn't refresh. You may be offline. Showing the saved copy."); flash("fail"); }
+      else setFatal((err as Error).message);
     } finally {
       if (id === reqId.current) { setLoading(false); setBusy(null); }
     }
-  }, [toast]);
+  }, [toast, flash]);
 
   useEffect(() => { void load(source); }, [source, load]);
 
+  loadedRef.current = loaded;
   const response = loaded?.response ?? null;
   const briefing: Briefing | null = response?.status === "ok" ? response.briefing : null;
 
@@ -137,13 +163,29 @@ function Shell() {
   }, [toast]);
 
   const openDate = useCallback((d: string | "today") => go("today", d === "today" ? { kind: "today" } : { kind: "date", date: d }), [go]);
-  const refresh = useCallback(() => void load(source, { refresh: true }), [load, source]);
+  const refresh = useCallback(() => {
+    if (busy !== null || sourceRef.current.kind === "upload") return;
+    weather.refresh();
+    void load(sourceRef.current, { refresh: true });
+  }, [load, weather, busy]);
 
   const doneMap = useDoneMap();
   const actionCount = useMemo(
     () => (briefing ? briefing.sections.flatMap((s) => s.items).filter((i) => i.kind === "action" && !doneMap[actionKey(i)]).length : 0),
     [briefing, doneMap],
   );
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const typing = /^(input|textarea|select)$/i.test((e.target as HTMLElement | null)?.tagName ?? "");
+      if (e.key === "/" && !typing && briefing && route !== "search") { e.preventDefault(); go("search"); }
+      else if (e.key === "Escape" && route === "search") go("today");
+      else if ((e.key === "r" || e.key === "R") && !typing && !e.metaKey && !e.ctrlKey && route !== "search") refresh();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [briefing, route, go, refresh]);
+
+  const ptr = usePullToRefresh(refresh, route !== "search" && source.kind !== "upload");
   const offline = !online || Boolean(loaded?.fromCache);
   const pageProps: PageProps | null = briefing && response
     ? { briefing, todayIST: response.todayIST, now, cached: response.cached, notices: response.notices, sourceKind: response.sourceKind, weather: weather.state, onLocate: weather.retry }
@@ -189,12 +231,17 @@ function Shell() {
         left={showBack ? <button className="btn ghost icon" type="button" onClick={() => go("today")} aria-label="Back">{Icon.back()}</button> : undefined}
       >
         {briefing && route !== "search" && (
-          <button className="btn ghost icon" type="button" onClick={() => go("search")} aria-label="Search" title="Search">{Icon.search()}</button>
+          <button className="btn bar-btn" type="button" onClick={() => go("search")} aria-label="Search (press /)" title="Search (/)">{Icon.search()}</button>
         )}
         {route !== "search" && source.kind !== "upload" && (
-          <button className="btn ghost icon" type="button" onClick={refresh} disabled={busy !== null} aria-label="Refresh" title="Refresh">{Icon.refresh(busy === "refresh" ? "spin" : undefined)}</button>
+          <RefreshButton state={refreshState} onClick={refresh} disabled={busy !== null} />
         )}
       </AppBar>
+      {ptr.pull > 0 && (
+        <div className={`ptr${ptr.armed ? " armed" : ""}`} style={{ transform: `translate(-50%, ${ptr.pull}px)` }} aria-hidden="true">
+          {Icon.refresh(ptr.armed ? "spin" : undefined)}<span>{ptr.armed ? "Release to refresh" : "Pull to refresh"}</span>
+        </div>
+      )}
       <main className="page" key={route}>
         {offline && <OfflineBanner processedAt={briefing?.processedAt ?? loaded?.cachedAt ?? null} />}
         <div className="route fade-in">{body}</div>

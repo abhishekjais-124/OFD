@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Briefing, Item, Section } from "@shared/schema";
 import { formatDateTimeIST, formatLongDateIST, greetingIST, nameFromGreetingTitle } from "@shared/ist";
 import { Segmented } from "../components/nav.tsx";
@@ -37,6 +37,9 @@ function Group({ title, count, children }: { title: string; count?: number; chil
 }
 
 /* ---------------- Today ---------------- */
+/** Shown by the refresh toast already, so it is not repeated as a banner. */
+const NO_NEWER = "Drive has no newer version of this file.";
+
 function WeatherReadout({ state, onLocate }: { state: WeatherState; onLocate: () => void }) {
   if (state.status === "locating" || state.status === "loading") {
     return <div className="wx"><span className="skeleton" style={{ width: 180, height: 44, borderRadius: 14 }} /></div>;
@@ -92,7 +95,7 @@ export function TodayPage(p: PageProps) {
           {b.confidence === "partial" && <Chip tone="danger">partial extraction</Chip>}
         </div>
       </div>
-      {p.notices.map((n, i) => <div className="banner info" key={i}>{Icon.warn()}<div className="grow">{n}</div></div>)}
+      {p.notices.filter((n) => n !== NO_NEWER).map((n, i) => <div className="banner info" key={i}>{Icon.warn()}<div className="grow">{n}</div></div>)}
       {actions.length > 0 && <Group title="Needs action" count={actions.length}>{actions.map((it) => <ItemView key={it.id} item={it} ctx={ctx} compact />)}</Group>}
       {glance.length > 0 && <Group title="At a glance">{glance.map((it) => <ItemView key={it.id} item={it} ctx={ctx} />)}</Group>}
       {calendar.length > 0 && <Group title="Calendar">{calendar.map((it) => <ItemView key={it.id} item={it} ctx={ctx} />)}</Group>}
@@ -164,28 +167,124 @@ export function LearnPage(p: PageProps) {
 }
 
 /* ---------------- Search ---------------- */
+const RECENT_KEY = "ofd.recent";
+function loadRecent(): string[] {
+  try { const v = JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]"); return Array.isArray(v) ? v.filter((x) => typeof x === "string").slice(0, 6) : []; } catch { return []; }
+}
+function saveRecent(list: string[]) {
+  try { localStorage.setItem(RECENT_KEY, JSON.stringify(list)); } catch { /* private mode */ }
+}
+
+/** Highlights every search term in the rendered results with the CSS Custom Highlight API. */
+function useHighlight(container: React.RefObject<HTMLElement | null>, query: string, deps: unknown[]) {
+  useEffect(() => {
+    const css = CSS as unknown as { highlights?: Map<string, unknown> };
+    const Highlight = (window as unknown as { Highlight?: new (...r: Range[]) => unknown }).Highlight;
+    const el = container.current;
+    if (!css.highlights || !Highlight || !el) return;
+    const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    css.highlights.delete("ofd-search");
+    if (!terms.length) return;
+    const ranges: Range[] = [];
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      const text = (n.textContent ?? "").toLowerCase();
+      for (const term of terms) {
+        for (let i = text.indexOf(term); i >= 0; i = text.indexOf(term, i + term.length)) {
+          const r = new Range();
+          r.setStart(n, i);
+          r.setEnd(n, i + term.length);
+          ranges.push(r);
+        }
+      }
+    }
+    if (ranges.length) css.highlights.set("ofd-search", new Highlight(...ranges));
+    return () => { css.highlights?.delete("ofd-search"); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, ...deps]);
+}
+
+/** Suggestions drawn from the briefing itself: the sites its links point to and its section names. */
+function suggestionsFor(b: Briefing): string[] {
+  const hosts = new Map<string, number>();
+  for (const s of b.sections) for (const i of s.items) for (const l of i.links) {
+    try { const h = new URL(l.url).hostname.replace(/^www\./, ""); hosts.set(h, (hosts.get(h) ?? 0) + 1); } catch { /* skip */ }
+  }
+  const top = [...hosts.entries()].sort((x, y) => y[1] - x[1]).slice(0, 4).map(([h]) => h);
+  return [...top, "deadline", "apply"];
+}
+
 export function SearchPage({ briefing, now, query, setQuery }: { briefing: Briefing; now: Date; query: string; setQuery: (q: string) => void }) {
   const [sectionId, setSectionId] = useState<string | null>(null);
+  const [recent, setRecent] = useState<string[]>(loadRecent);
+  const input = useRef<HTMLInputElement>(null);
   const results = useMemo(() => filterSections(briefing, { query, sectionId }), [briefing, query, sectionId]);
+  const resultsRef = useRef<HTMLDivElement>(null);
   const active = query.trim().length > 0;
+  const showing = active || sectionId !== null;
+  const total = countItems(results);
   const ctx = { pdfUrl: briefing.pdfUrl, now };
+  useHighlight(resultsRef, query, [results]);
+
+  const remember = (q: string) => {
+    const t = q.trim();
+    if (t.length < 2) return;
+    const next = [t, ...recent.filter((r) => r.toLowerCase() !== t.toLowerCase())].slice(0, 6);
+    setRecent(next);
+    saveRecent(next);
+  };
+  // remember a search once the user pauses on a query that found something
+  useEffect(() => {
+    if (!active || total === 0) return;
+    const t = setTimeout(() => remember(query), 1200);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, total]);
+
+  const pick = (q: string) => { setQuery(q); input.current?.blur(); };
+
   return (
     <>
-      <div className="search big">
+      <form className="search big" onSubmit={(e) => { e.preventDefault(); remember(query); input.current?.blur(); }} role="search">
         {Icon.search()}
-        <input autoFocus type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search links, text, tables" aria-label="Search" autoComplete="off" />
-        {query && <button className="btn ghost icon clear" type="button" onClick={() => setQuery("")} aria-label="Clear search">{Icon.x()}</button>}
-      </div>
-      <div className="chips" aria-label="Sections">
+        <input ref={input} autoFocus type="search" enterKeyHint="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search links, text, tables" aria-label="Search this briefing" autoComplete="off" autoCorrect="off" spellCheck={false} />
+        {query && <button className="btn ghost icon clear" type="button" onClick={() => { setQuery(""); input.current?.focus(); }} aria-label="Clear search">{Icon.x()}</button>}
+      </form>
+      <div className="chips" aria-label="Limit to a section">
         <button className={`btn sm${sectionId === null ? " on" : ""}`} type="button" onClick={() => setSectionId(null)}>All</button>
         {briefing.sections.map((s) => <button key={s.id} className={`btn sm${sectionId === s.id ? " on" : ""}`} type="button" onClick={() => setSectionId(sectionId === s.id ? null : s.id)}>{s.title}</button>)}
       </div>
-      {!active && sectionId === null && <div className="state"><p>Type to search every section of this briefing.</p></div>}
-      {(active || sectionId !== null) && results.length === 0 && <div className="state"><h2>No matches</h2><p>Nothing matches "{query}".</p></div>}
-      {(active || sectionId !== null) && results.map((s) => (
-        <Group key={s.id} title={s.title} count={s.items.length}>{s.items.map((i: Item) => <ItemView key={i.id} item={i} ctx={ctx} />)}</Group>
-      ))}
-      {(active || sectionId !== null) && results.length > 0 && <p className="small muted" style={{ marginTop: 14 }}>{countItems(results)} matching item{countItems(results) === 1 ? "" : "s"}</p>}
+
+      {!showing && (
+        <>
+          {recent.length > 0 && (
+            <div className="search-section">
+              <h2>Recent <button type="button" onClick={() => { setRecent([]); saveRecent([]); }}>Clear</button></h2>
+              <div className="chips wrap">{recent.map((r) => <button key={r} className="btn sm hist" type="button" onClick={() => pick(r)}>{Icon.reprocess()} {r}</button>)}</div>
+            </div>
+          )}
+          <div className="search-section">
+            <h2>Try</h2>
+            <div className="chips wrap">{suggestionsFor(briefing).map((q) => <button key={q} className="btn sm" type="button" onClick={() => pick(q)}>{q}</button>)}</div>
+          </div>
+        </>
+      )}
+
+      {showing && (
+        <p className="search-summary" role="status">
+          {total === 0 ? <>No matches{active ? <> for <strong>{query.trim()}</strong></> : null}.</> : <><strong>{total}</strong> match{total === 1 ? "" : "es"} in {results.length} section{results.length === 1 ? "" : "s"}</>}
+        </p>
+      )}
+      {showing && total === 0 && (
+        <div className="state"><p>Try fewer words, or clear the section filter.</p>
+          <div className="actions-row"><button className="btn" type="button" onClick={() => { setQuery(""); setSectionId(null); input.current?.focus(); }}>Reset search</button></div>
+        </div>
+      )}
+      <div ref={resultsRef}>
+        {showing && results.map((s) => (
+          <Group key={s.id} title={s.title} count={s.items.length}>{s.items.map((i: Item) => <ItemView key={i.id} item={i} ctx={ctx} />)}</Group>
+        ))}
+      </div>
     </>
   );
 }

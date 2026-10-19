@@ -50,3 +50,15 @@ export function Segmented<T extends string>({ value, options, onChange }: { valu
     </div>
   );
 }
+
+export type RefreshState = "idle" | "busy" | "ok" | "fail";
+
+/** Refresh icon that shows what happened: spinning while working, a tick on success, a warning on failure. */
+export function RefreshButton({ state, onClick, disabled }: { state: RefreshState; onClick: () => void; disabled: boolean }) {
+  const label = state === "busy" ? "Refreshing" : state === "ok" ? "Refreshed" : state === "fail" ? "Refresh failed, tap to retry" : "Refresh (press R)";
+  return (
+    <button className={`btn bar-btn refresh-${state}`} type="button" onClick={onClick} disabled={disabled} aria-label={label} title={label} aria-live="polite">
+      {state === "ok" ? Icon.check() : state === "fail" ? Icon.warn() : Icon.refresh(state === "busy" ? "spin" : undefined)}
+    </button>
+  );
+}

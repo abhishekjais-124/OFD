@@ -39,7 +39,7 @@ async function fetchWeather(lat: number, lon: number): Promise<WeatherResponse> 
  * known position and reading are kept on this device so the sky is right straight away and
  * when offline. Only coordinates rounded to ~1 km reach the server.
  */
-export function useWeather(): { state: WeatherState; retry: () => void } {
+export function useWeather(): { state: WeatherState; retry: () => void; refresh: () => void } {
   const cachedWx = read<{ weather: WeatherResponse; at: number }>(WX_KEY);
   const [state, setState] = useState<WeatherState>(
     cachedWx && Date.now() - cachedWx.at < STALE_AFTER_MS ? { status: "ok", weather: cachedWx.weather, stale: true } : { status: "locating" },
@@ -84,7 +84,12 @@ export function useWeather(): { state: WeatherState; retry: () => void } {
     return () => clearInterval(t);
   }, [locate, load]);
 
-  return { state, retry: locate };
+  /** Re-reads the weather for the last known position; never shows a permission prompt. */
+  const refresh = useCallback(() => {
+    if (loc.current) void load(loc.current.lat, loc.current.lon);
+  }, [load]);
+
+  return { state, retry: locate, refresh };
 }
 
 /** CSS hook for the app-wide tint: "rain-night", "clear-day", and so on. */

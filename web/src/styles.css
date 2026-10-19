@@ -544,3 +544,29 @@ details[open] > summary .chev { transform: rotate(180deg); }
 .card.is-done { opacity: 0.78; }
 .card.is-done h3 { color: var(--text-2); text-decoration: line-through; text-decoration-color: rgba(255, 255, 255, 0.25); }
 .card.is-done .todo { opacity: 0.6; }
+
+
+/* ================= top bar buttons, pull to refresh ================= */
+.bar-btn { width: 42px; height: 42px; min-width: 42px; padding: 0; border-radius: 14px; background: rgba(255, 255, 255, 0.06); border: 1px solid var(--border); color: var(--text); }
+.bar-btn:hover { background: rgba(255, 255, 255, 0.11); }
+.bar-btn svg { width: 20px; height: 20px; }
+.bar-btn.refresh-ok { color: var(--ok); background: var(--ok-soft); border-color: transparent; }
+.bar-btn.refresh-fail { color: var(--warn); background: var(--warn-soft); border-color: transparent; }
+.bar-btn.refresh-busy { color: var(--accent-text); }
+.bar-btn:disabled { opacity: 1; }
+.bar-btn:focus-visible, .tab:focus-visible, .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.appbar-actions { gap: 8px; padding-right: 6px; }
+.ptr { position: fixed; top: calc(52px + env(safe-area-inset-top)); left: 50%; margin-top: -48px; z-index: 25; display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; background: var(--surface-3); border: 1px solid var(--border-strong); font-size: 13px; font-weight: 600; color: var(--text-2); box-shadow: var(--shadow); pointer-events: none; }
+.ptr svg { width: 16px; height: 16px; }
+.ptr.armed { color: var(--accent-text); }
+
+/* ================= search page ================= */
+.search-section { margin-top: 18px; }
+.search-section h2 { font-size: 12px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--text-3); font-weight: 700; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+.search-section h2 button { background: none; border: 0; color: var(--text-3); font: inherit; letter-spacing: 0; text-transform: none; cursor: pointer; padding: 6px; }
+.chips.wrap .btn.hist { gap: 8px; }
+.chips.wrap .btn.hist svg { width: 15px; height: 15px; color: var(--text-3); }
+.search-summary { font-size: 13.5px; color: var(--text-2); margin: 10px 2px 0; }
+.search-summary strong { color: var(--text); }
+::highlight(ofd-search) { background-color: rgba(255, 205, 90, 0.42); color: inherit; }
+.banner svg { width: 20px; height: 20px; flex: none; margin-top: 1px; }
