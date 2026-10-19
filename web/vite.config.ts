@@ -10,10 +10,10 @@ export default defineConfig({
   plugins: [react()],
   resolve: { alias: { "@shared": path.join(repo, "shared") } },
   server: {
-    port: 5173,
+    port: Number(process.env.PORT) || 5180,
+    strictPort: true,
     fs: { allow: [repo] },
-    proxy: { "/api": { target: "http://localhost:8787", changeOrigin: false } },
+    proxy: { "/api": { target: `http://localhost:${process.env.OFD_API_PORT || 8787}`, changeOrigin: false } },
   },
   build: { outDir: path.join(repo, "dist", "web"), emptyOutDir: true },
-  test: {},
 });
