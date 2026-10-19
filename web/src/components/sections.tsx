@@ -1,4 +1,5 @@
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
+import { actionKey, useDone } from "../done.ts";
 import type { Briefing, Item, Section } from "@shared/schema";
 import { splitSteps } from "@shared/actions";
 import { parseCalendarStatus } from "@shared/calendar";
@@ -31,41 +32,14 @@ function Countdown({ date, now, text }: { date: string | null; now: Date; text?:
   return <span className={`countdown ${c.state}`} title={text}>{c.label} · {formatShortDateIST(date)}{/eod/i.test(text ?? "") ? " EOD" : ""}</span>;
 }
 
-const DONE_KEY = "ofd.done";
-function loadDone(): Record<string, true> {
-  try { return JSON.parse(localStorage.getItem(DONE_KEY) ?? "{}") as Record<string, true>; } catch { return {}; }
-}
-
-/** Key steps as tick-off rows; ticks are remembered on this device. */
-function Checklist({ scope, steps }: { scope: string; steps: { n: number; text: string }[] }) {
-  const [done, setDone] = useState(loadDone);
-  const idOf = (text: string) => `${scope}|${text.slice(0, 60)}`;
-  const toggle = (text: string) => {
-    const id = idOf(text);
-    setDone((prev) => {
-      const next = { ...prev };
-      if (next[id]) delete next[id]; else next[id] = true;
-      try { localStorage.setItem(DONE_KEY, JSON.stringify(next)); } catch { /* private mode */ }
-      return next;
-    });
-  };
-  const left = steps.filter((st) => !done[idOf(st.text)]).length;
+/** The key steps as a plain list: what to do, in order. */
+function TodoList({ steps }: { steps: { n: number; text: string }[] }) {
   return (
     <div className="todo">
-      <p className="todo-head"><span>Actions to take</span><span className="todo-count">{left === 0 ? "all done" : `${left} of ${steps.length} left`}</span></p>
-      <ul>
-        {steps.map((st) => {
-          const on = Boolean(done[idOf(st.text)]);
-          return (
-            <li key={st.n}>
-              <button type="button" role="checkbox" aria-checked={on} className={`todo-row${on ? " on" : ""}`} onClick={() => toggle(st.text)}>
-                <span className="todo-box">{on && Icon.check()}</span>
-                <span className="todo-text">{st.text}</span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+      <p className="todo-head"><span>Actions to take</span></p>
+      <ol className="todo-list">
+        {steps.map((st) => <li key={st.n}>{st.text}</li>)}
+      </ol>
     </div>
   );
 }
@@ -73,20 +47,21 @@ function Checklist({ scope, steps }: { scope: string; steps: { n: number; text: 
 function ActionCard({ item, ctx, compact = false }: { item: Item; ctx: Ctx; compact?: boolean }) {
   const a = item.action!;
   const { key: keySteps, other: otherSteps } = splitSteps(a.steps);
+  const [done, toggleDone] = useDone(actionKey(item));
   return (
-    <article className={`card${a.priority === "important" ? " danger" : ""} fade-in`}>
+    <article className={`card${a.priority === "important" && !done ? " danger" : ""}${done ? " is-done" : ""} fade-in`}>
       <div className="card-top">
         <div className="grow">
           <div className="meta-row" style={{ marginBottom: 6 }}>
             {a.priority === "important" && <span className="badge danger">Important</span>}
-            <Countdown date={a.deadlineDate} now={ctx.now} text={a.deadlineText} />
+            {done ? <span className="countdown done">Done</span> : <Countdown date={a.deadlineDate} now={ctx.now} text={a.deadlineText} />}
             <Flags flags={item.flags} />
           </div>
           <h3>{item.title}</h3>
         </div>
         <PageRef page={item.page} pdfUrl={ctx.pdfUrl} />
       </div>
-      {keySteps.length > 0 && <Checklist scope={a.deadlineDate ?? item.title ?? item.id} steps={keySteps} />}
+      {keySteps.length > 0 && <TodoList steps={keySteps} />}
       <details>
         <summary className="btn ghost sm" style={{ marginTop: 8 }}>Details {Icon.chev()}</summary>
         <div className="body">
@@ -102,9 +77,13 @@ function ActionCard({ item, ctx, compact = false }: { item: Item; ctx: Ctx; comp
           )}
         </div>
       </details>
-      {compact
-        ? <div className="actions-row" style={{ marginTop: 10 }}><button className="btn sm" type="button" onClick={() => goTab("mail")}>{Icon.mail()} Open in Mail · {item.links.length} link{item.links.length === 1 ? "" : "s"}</button></div>
-        : <LinkList links={item.links} />}
+      {!compact && <LinkList links={item.links} />}
+      <div className="actions-row done-row">
+        <button className={`btn done-btn${done ? " on" : ""}`} type="button" aria-pressed={done} onClick={toggleDone}>
+          {Icon.check()} {done ? "Done · tap to undo" : "Mark as done"}
+        </button>
+        {compact && <button className="btn quiet" type="button" onClick={() => goTab("mail")}>{Icon.mail()} {item.links.length} link{item.links.length === 1 ? "" : "s"}</button>}
+      </div>
     </article>
   );
 }

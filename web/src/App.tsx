@@ -4,6 +4,7 @@ import { api, type ApiResult } from "./api.ts";
 import { AppBar, TabBar, type Tab } from "./components/nav.tsx";
 import { ErrorState, MissingState, OfflineBanner, Skeleton } from "./components/states.tsx";
 import { Icon, ToastProvider, useToast } from "./components/ui.tsx";
+import { actionKey, useDoneMap } from "./done.ts";
 import { skyKey, useWeather } from "./weather.tsx";
 import { LearnPage, MailPage, MoreLite, MorePage, NewsPage, SearchPage, TodayPage, type PageProps } from "./pages/pages.tsx";
 
@@ -138,9 +139,10 @@ function Shell() {
   const openDate = useCallback((d: string | "today") => go("today", d === "today" ? { kind: "today" } : { kind: "date", date: d }), [go]);
   const refresh = useCallback(() => void load(source, { refresh: true }), [load, source]);
 
+  const doneMap = useDoneMap();
   const actionCount = useMemo(
-    () => (briefing ? briefing.sections.flatMap((s) => s.items).filter((i) => i.kind === "action").length : 0),
-    [briefing],
+    () => (briefing ? briefing.sections.flatMap((s) => s.items).filter((i) => i.kind === "action" && !doneMap[actionKey(i)]).length : 0),
+    [briefing, doneMap],
   );
   const offline = !online || Boolean(loaded?.fromCache);
   const pageProps: PageProps | null = briefing && response
