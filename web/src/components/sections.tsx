@@ -4,7 +4,7 @@ import type { Briefing, Item, Section } from "@shared/schema";
 import { splitSteps } from "@shared/actions";
 import { parseCalendarStatus } from "@shared/calendar";
 import { countdownIST, formatDateTimeIST, formatShortDateIST } from "@shared/ist";
-import { Chip, CopyButton, DataTable, FieldList, Flags, Icon, LinkList, PageRef } from "./ui.tsx";
+import { Chip, CopyButton, DataTable, FieldList, Flags, Icon, LinkChips, LinkList, PageRef } from "./ui.tsx";
 
 interface Ctx {
   pdfUrl: string;
@@ -77,7 +77,7 @@ function ActionCard({ item, ctx, compact = false }: { item: Item; ctx: Ctx; comp
           )}
         </div>
       </details>
-      {!compact && <LinkList links={item.links} />}
+      {!compact && <LinkChips links={item.links} />}
       <div className="actions-row done-row">
         <button className={`btn done-btn${done ? " on" : ""}`} type="button" aria-pressed={done} onClick={toggleDone}>
           {Icon.check()} {done ? "Done · tap to undo" : "Mark as done"}

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Briefing, Item, Section } from "@shared/schema";
 import { formatDateTimeIST, formatLongDateIST, greetingIST, nameFromGreetingTitle } from "@shared/ist";
 import { Segmented } from "../components/nav.tsx";
+import { AlertList, UpdateRow } from "../components/mail.tsx";
 import { ItemView, NotesPanel } from "../components/sections.tsx";
 import { Chip, Icon } from "../components/ui.tsx";
 import { Upload } from "../components/Upload.tsx";
@@ -110,13 +111,32 @@ export function MailPage(p: PageProps) {
   const items = allItems(sectionsOf(p.briefing, "mail"));
   const important = items.filter((i) => i.kind === "action");
   const alerts = items.filter((i) => i.kind === "alerts");
-  const rest = items.filter((i) => i.kind !== "action" && i.kind !== "alerts");
+  const updates = items.filter((i) => i.kind === "github" || i.kind === "share");
+  const rest = items.filter((i) => !important.includes(i) && !alerts.includes(i) && !updates.includes(i));
   if (!items.length) return <Empty text="No mail section in this briefing." />;
+  const alertCount = alerts.reduce((n, a) => n + (a.tables[0]?.rows.length ?? 0), 0);
+  const summary = [
+    important.length ? `${important.length} needs action` : "nothing needs action",
+    updates.length ? `${updates.length} update${updates.length === 1 ? "" : "s"}` : null,
+    alertCount ? `${alertCount} alert${alertCount === 1 ? "" : "s"}` : null,
+  ].filter(Boolean).join(" · ");
   return (
     <>
-      {important.length > 0 && <Group title="Action needed" count={important.length}>{important.map((i) => <ItemView key={i.id} item={i} ctx={ctx} />)}</Group>}
-      {rest.length > 0 && <Group title="Updates" count={rest.length}>{rest.map((i) => <ItemView key={i.id} item={i} ctx={ctx} />)}</Group>}
-      {alerts.length > 0 && <Group title="Automated alerts">{alerts.map((i) => <ItemView key={i.id} item={i} ctx={ctx} />)}</Group>}
+      <p className="mail-summary">{summary}</p>
+      {important.length > 0 && <Group title="Needs action">{important.map((i) => <ItemView key={i.id} item={i} ctx={ctx} />)}</Group>}
+      {updates.length > 0 && (
+        <section className="section">
+          <div className="section-head"><h2>Updates</h2><span className="count">{updates.length}</span></div>
+          <div className="mlist">{updates.map((i) => <UpdateRow key={i.id} item={i} ctx={ctx} />)}</div>
+        </section>
+      )}
+      {alerts.length > 0 && (
+        <section className="section">
+          <div className="section-head"><h2>Alerts</h2></div>
+          <div className="mlist">{alerts.map((i) => <AlertList key={i.id} item={i} ctx={ctx} />)}</div>
+        </section>
+      )}
+      {rest.length > 0 && <Group title="Other">{rest.map((i) => <ItemView key={i.id} item={i} ctx={ctx} />)}</Group>}
     </>
   );
 }
