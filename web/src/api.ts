@@ -1,4 +1,5 @@
 import type { BriefingResponse, StatusResponse } from "@shared/schema";
+import { BASE, withBase } from "./base.ts";
 
 export interface ApiResult<T> {
   data: T;
@@ -8,7 +9,7 @@ export interface ApiResult<T> {
 }
 
 async function call<T>(input: string, init?: RequestInit): Promise<ApiResult<T>> {
-  const res = await fetch(input, init);
+  const res = await fetch(BASE + input, init);
   const fromCache = res.headers.get("x-ofd-cache") === "1";
   const cachedAt = res.headers.get("x-ofd-cached-at");
   if (!res.ok && !fromCache) {
@@ -21,7 +22,9 @@ async function call<T>(input: string, init?: RequestInit): Promise<ApiResult<T>>
     }
     throw new Error(message);
   }
-  return { data: (await res.json()) as T, fromCache, cachedAt };
+  // image and PDF urls come back root-relative; keep them working when mounted under a path
+  const data = JSON.parse(await res.text(), (_k, v) => (typeof v === "string" ? withBase(v) : v)) as T;
+  return { data, fromCache, cachedAt };
 }
 
 export const api = {

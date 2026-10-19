@@ -1,3 +1,4 @@
+import { BASE } from "./base.ts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Sky, WeatherResponse } from "@shared/schema";
 
@@ -28,7 +29,7 @@ function write(key: string, value: unknown) {
 }
 
 async function fetchWeather(lat: number, lon: number): Promise<WeatherResponse> {
-  const res = await fetch(`/api/weather?lat=${lat}&lon=${lon}`);
+  const res = await fetch(`${BASE}/api/weather?lat=${lat}&lon=${lon}`);
   const fromCache = res.headers.get("x-ofd-cache") === "1";
   if (!res.ok && !fromCache) throw new Error(`weather HTTP ${res.status}`);
   return (await res.json()) as WeatherResponse;

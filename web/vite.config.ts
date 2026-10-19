@@ -5,8 +5,11 @@ import path from "node:path";
 const root = path.resolve(import.meta.dirname);
 const repo = path.resolve(import.meta.dirname, "..");
 
+const base = (process.env.OFD_BASE ?? "").replace(/\/+$/, "");
+
 export default defineConfig({
   root,
+  base: `${base}/`,
   plugins: [react()],
   resolve: { alias: { "@shared": path.join(repo, "shared") } },
   server: {

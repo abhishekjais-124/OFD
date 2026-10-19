@@ -1,11 +1,13 @@
 /* OFD service worker: app shell + last processed result for offline reading. */
 const VERSION = "ofd-v1";
+// mount path ("" at the root, "/OFD" behind aj124.com/OFD), taken from where this worker lives
+const BASE = new URL(self.registration.scope).pathname.replace(/\/$/, "");
 const SHELL = `${VERSION}-shell`;
 const API = `${VERSION}-api`;
 const MEDIA = `${VERSION}-media`;
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(SHELL).then((c) => c.addAll(["/", "/manifest.webmanifest", "/icons/icon.svg"]).catch(() => {})).then(() => self.skipWaiting()));
+  event.waitUntil(caches.open(SHELL).then((c) => c.addAll([`${BASE}/`, `${BASE}/manifest.webmanifest`, `${BASE}/icons/icon.svg`]).catch(() => {})).then(() => self.skipWaiting()));
 });
 
 self.addEventListener("activate", (event) => {
@@ -30,7 +32,7 @@ async function networkFirst(req, cacheName, { storeOnlyOk = true } = {}) {
     }
     return res;
   } catch (err) {
-    const hit = await cache.match(req, { ignoreSearch: false }) || (req.mode === "navigate" ? await cache.match("/") : null);
+    const hit = await cache.match(req, { ignoreSearch: false }) || (req.mode === "navigate" ? await cache.match(`${BASE}/`) : null);
     if (hit) return withHeaders(hit, { "x-ofd-cache": "1" });
     throw err;
   }
@@ -50,7 +52,7 @@ self.addEventListener("fetch", (event) => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
-  const path = url.pathname;
+  const path = url.pathname.startsWith(BASE + "/") ? url.pathname.slice(BASE.length) : url.pathname;
 
   if (path.startsWith("/api/images/") || path.endsWith("/pdf")) {
     event.respondWith(cacheFirst(req, MEDIA));

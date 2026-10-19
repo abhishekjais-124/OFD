@@ -1,0 +1,27 @@
+# Render blueprint for OFD. Served at https://aj124.com/OFD (Cloudflare forwards /OFD* here, path unchanged).
+services:
+  - type: web
+    name: ofd
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: npm ci --include=dev && OFD_BASE=/OFD npm run build
+    startCommand: npm start
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: OFD_BASE
+        value: /OFD
+      - key: OFD_CACHE_DIR
+        value: /tmp/ofd-cache
+      - key: DRIVE_FOLDER_ID
+        value: 1RpOr2HsXSGuFpeSaVzYJssvmxzY0HhNG
+      # Secrets: set these in the Render dashboard (sync: false keeps them out of git).
+      - key: DRIVE_AUTH
+        sync: false
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: GOOGLE_SERVICE_ACCOUNT_JSON
+        sync: false

@@ -20,6 +20,7 @@ function boot() {
   const handlers: Record<string, Handler> = {};
   const self = {
     location: new URL("http://localhost/sw.js"),
+    registration: { scope: "http://localhost/" },
     addEventListener: (name: string, fn: Handler) => { handlers[name] = fn; },
     skipWaiting: async () => {},
     clients: { claim: async () => {} },
