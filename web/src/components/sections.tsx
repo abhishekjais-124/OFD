@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { actionKey, useDone } from "../done.ts";
 import type { Briefing, Item, Section } from "@shared/schema";
-import { splitSteps } from "@shared/actions";
+import { splitSteps, topSteps } from "@shared/actions";
 import { parseCalendarStatus } from "@shared/calendar";
 import { countdownIST, formatDateTimeIST, formatShortDateIST } from "@shared/ist";
 import { Chip, CopyButton, DataTable, FieldList, Flags, Icon, LinkChips, LinkList, PageRef } from "./ui.tsx";
@@ -33,13 +33,18 @@ function Countdown({ date, now, text }: { date: string | null; now: Date; text?:
 }
 
 /** The key steps as a plain list: what to do, in order. */
-function TodoList({ steps }: { steps: { n: number; text: string }[] }) {
+function TodoList({ steps, hidden = 0 }: { steps: { n: number; text: string }[]; hidden?: number }) {
   return (
     <div className="todo">
-      <p className="todo-head"><span>Actions to take</span></p>
+      <p className="todo-head"><span>{hidden > 0 ? "Top actions to take" : "Actions to take"}</span></p>
       <ol className="todo-list">
-        {steps.map((st) => <li key={st.n}>{st.text}</li>)}
+        {steps.map((st) => <li key={st.n} value={hidden > 0 ? undefined : st.n}>{st.text}</li>)}
       </ol>
+      {hidden > 0 && (
+        <button className="todo-more" type="button" onClick={() => goTab("mail")}>
+          +{hidden} more step{hidden === 1 ? "" : "s"} in Mail {Icon.chev()}
+        </button>
+      )}
     </div>
   );
 }
@@ -48,6 +53,7 @@ function ActionCard({ item, ctx, compact = false }: { item: Item; ctx: Ctx; comp
   const a = item.action!;
   const { key: keySteps, other: otherSteps } = splitSteps(a.steps);
   const [done, toggleDone] = useDone(actionKey(item));
+  const shown = topSteps(keySteps, 3);
   return (
     <article className={`card${a.priority === "important" && !done ? " danger" : ""}${done ? " is-done" : ""} fade-in`}>
       <div className="card-top">
@@ -61,7 +67,7 @@ function ActionCard({ item, ctx, compact = false }: { item: Item; ctx: Ctx; comp
         </div>
         <PageRef page={item.page} pdfUrl={ctx.pdfUrl} />
       </div>
-      {keySteps.length > 0 && <TodoList steps={keySteps} />}
+      {keySteps.length > 0 && (compact ? <TodoList steps={shown.shown} hidden={shown.hidden} /> : <TodoList steps={keySteps} />)}
       <details>
         <summary className="btn ghost sm" style={{ marginTop: 8 }}>Details {Icon.chev()}</summary>
         <div className="body">
