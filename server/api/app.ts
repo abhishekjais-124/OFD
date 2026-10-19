@@ -35,7 +35,8 @@ export function createApp(deps: AppDeps): Express {
       if (err instanceof WeatherError && err.code === "bad_coordinates") {
         res.status(400).json({ error: { code: err.code, message: err.message, retryable: false } });
       } else {
-        res.status(502).json({ error: { code: "weather_unavailable", message: (err as Error).message, retryable: true } });
+        // 503, not 502: Cloudflare swaps an origin 502 for its own HTML error page
+        res.status(503).json({ error: { code: "weather_unavailable", message: (err as Error).message, retryable: true } });
       }
     }
   });

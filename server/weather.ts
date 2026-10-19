@@ -46,6 +46,35 @@ interface OpenMeteo {
   daily?: { temperature_2m_max?: number[]; temperature_2m_min?: number[] };
 }
 
+interface MetNo {
+  properties?: {
+    timeseries?: {
+      time: string;
+      data: {
+        instant: { details: { air_temperature: number; wind_speed: number; relative_humidity: number } };
+        next_1_hours?: { summary: { symbol_code: string } };
+        next_6_hours?: { summary: { symbol_code: string }; details?: { air_temperature_max?: number; air_temperature_min?: number } };
+      };
+    }[];
+  };
+}
+
+/** MET Norway symbol codes ("partlycloudy_night", "lightrain") to a sky and label. */
+export function skyFromSymbol(symbol: string): { sky: Sky; label: string; isDay: boolean } {
+  const isDay = !symbol.endsWith("_night");
+  const base = symbol.replace(/_(day|night|polartwilight)$/, "");
+  if (base === "clearsky") return { sky: "clear", label: "Clear", isDay };
+  if (base === "fair") return { sky: "clear", label: "Mostly clear", isDay };
+  if (base === "partlycloudy") return { sky: "partly", label: "Partly cloudy", isDay };
+  if (base === "cloudy") return { sky: "cloudy", label: "Overcast", isDay };
+  if (base === "fog") return { sky: "fog", label: "Fog", isDay };
+  if (base.includes("thunder")) return { sky: "thunder", label: "Thunderstorm", isDay };
+  if (base.includes("snow") || base.includes("sleet")) return { sky: "snow", label: "Snow", isDay };
+  if (base.includes("showers")) return { sky: "rain", label: "Rain showers", isDay };
+  if (base.includes("rain")) return { sky: base.startsWith("light") ? "drizzle" : "rain", label: base.startsWith("light") ? "Light rain" : "Rain", isDay };
+  return { sky: "cloudy", label: "Cloudy", isDay };
+}
+
 export interface WeatherService {
   get(lat: number, lon: number): Promise<WeatherResponse>;
 }
@@ -53,15 +82,61 @@ export interface WeatherService {
 export function weatherService(fetchImpl: typeof fetch = fetch, now: () => number = Date.now): WeatherService {
   const cache = new Map<string, { at: number; value: WeatherResponse }>();
 
-  async function json<T>(url: string): Promise<T> {
+  async function json<T>(url: string, headers?: Record<string, string>): Promise<T> {
     let res: Response;
     try {
-      res = await fetchImpl(url, { signal: AbortSignal.timeout(8000) });
+      res = await fetchImpl(url, { signal: AbortSignal.timeout(8000), headers });
     } catch (err) {
       throw new WeatherError("upstream", `weather provider unreachable: ${(err as Error).message}`);
     }
     if (!res.ok) throw new WeatherError("upstream", `weather provider answered HTTP ${res.status}`);
     return (await res.json()) as T;
+  }
+
+  async function openMeteo(lat: number, lon: number): Promise<Omit<WeatherResponse, "place" | "fetchedAt">> {
+    const data = await json<OpenMeteo>(
+      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+        "&current=temperature_2m,apparent_temperature,weather_code,is_day,wind_speed_10m,relative_humidity_2m" +
+        "&daily=temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=1",
+    );
+    const c = data.current;
+    if (!c) throw new WeatherError("upstream", "weather provider returned no current conditions");
+    const { sky, label } = skyFromCode(c.weather_code);
+    return {
+      sky,
+      isDay: c.is_day === 1,
+      label,
+      tempC: Math.round(c.temperature_2m),
+      feelsC: Math.round(c.apparent_temperature),
+      highC: data.daily?.temperature_2m_max?.[0] !== undefined ? Math.round(data.daily.temperature_2m_max[0]) : null,
+      lowC: data.daily?.temperature_2m_min?.[0] !== undefined ? Math.round(data.daily.temperature_2m_min[0]) : null,
+      windKph: Math.round(c.wind_speed_10m),
+      humidity: Math.round(c.relative_humidity_2m),
+    };
+  }
+
+  /** Keyless fallback. It has no "feels like", so that equals the air temperature. */
+  async function metNo(lat: number, lon: number): Promise<Omit<WeatherResponse, "place" | "fetchedAt">> {
+    const data = await json<MetNo>(`https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${lat}&lon=${lon}`, {
+      "user-agent": "OFD-briefing-reader/1.0 github.com/abhishekjais-124/OFD",
+    });
+    const series = data.properties?.timeseries;
+    const first = series?.[0];
+    if (!first) throw new WeatherError("upstream", "fallback weather provider returned no data");
+    const { sky, label, isDay } = skyFromSymbol(first.data.next_1_hours?.summary.symbol_code ?? first.data.next_6_hours?.summary.symbol_code ?? "cloudy");
+    const temps = (series ?? []).slice(0, 24).map((t) => t.data.instant.details.air_temperature);
+    const d = first.data.instant.details;
+    return {
+      sky,
+      isDay,
+      label,
+      tempC: Math.round(d.air_temperature),
+      feelsC: Math.round(d.air_temperature),
+      highC: temps.length ? Math.round(Math.max(...temps)) : null,
+      lowC: temps.length ? Math.round(Math.min(...temps)) : null,
+      windKph: Math.round(d.wind_speed * 3.6),
+      humidity: Math.round(d.relative_humidity),
+    };
   }
 
   return {
@@ -70,35 +145,26 @@ export function weatherService(fetchImpl: typeof fetch = fetch, now: () => numbe
       const hit = cache.get(key);
       if (hit && now() - hit.at < TTL_MS) return hit.value;
 
-      const forecast = json<OpenMeteo>(
-        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
-          "&current=temperature_2m,apparent_temperature,weather_code,is_day,wind_speed_10m,relative_humidity_2m" +
-          "&daily=temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=1",
-      );
       // the place name is a nicety: a failure must not hide the weather
       const place = json<{ city?: string; locality?: string; principalSubdivision?: string }>(
         `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`,
       ).then((g) => g.city || g.locality || g.principalSubdivision || null).catch(() => null);
 
-      const data = await forecast;
-      const c = data.current;
-      if (!c) throw new WeatherError("upstream", "weather provider returned no current conditions");
-      const { sky, label } = skyFromCode(c.weather_code);
-      const value: WeatherResponse = {
-        sky,
-        isDay: c.is_day === 1,
-        label,
-        tempC: Math.round(c.temperature_2m),
-        feelsC: Math.round(c.apparent_temperature),
-        highC: data.daily?.temperature_2m_max?.[0] !== undefined ? Math.round(data.daily.temperature_2m_max[0]) : null,
-        lowC: data.daily?.temperature_2m_min?.[0] !== undefined ? Math.round(data.daily.temperature_2m_min[0]) : null,
-        windKph: Math.round(c.wind_speed_10m),
-        humidity: Math.round(c.relative_humidity_2m),
-        place: await place,
-        fetchedAt: new Date(now()).toISOString(),
-      };
-      cache.set(key, { at: now(), value });
-      return value;
+      let value: Omit<WeatherResponse, "place" | "fetchedAt">;
+      try {
+        value = await openMeteo(lat, lon);
+      } catch (primary) {
+        try {
+          value = await metNo(lat, lon); // shared hosting IPs are often rate limited (HTTP 429) by Open-Meteo
+        } catch {
+          // both providers failed: an old reading beats an error
+          if (hit) return hit.value;
+          throw primary;
+        }
+      }
+      const full: WeatherResponse = { ...value, place: await place, fetchedAt: new Date(now()).toISOString() };
+      cache.set(key, { at: now(), value: full });
+      return full;
     },
   };
 }
