@@ -23,6 +23,8 @@ export const Icon = {
   news: () => <svg viewBox="0 0 24 24" {...p}><path d="M5 4h11a1 1 0 0 1 1 1v14H6a2 2 0 0 1-2-2V5a1 1 0 0 1 1-1zM17 8h3v9a2 2 0 0 1-2 2M8 8h6M8 12h6M8 15h4" /></svg>,
   learn: () => <svg viewBox="0 0 24 24" {...p}><path d="M12 3l9 4.5-9 4.5-9-4.5zM7 10.5v5c0 1.2 2.2 2.5 5 2.5s5-1.3 5-2.5v-5" /></svg>,
   more: () => <svg viewBox="0 0 24 24" {...p}><circle cx="5" cy="12" r="1.2" /><circle cx="12" cy="12" r="1.2" /><circle cx="19" cy="12" r="1.2" /></svg>,
+  calendar: () => <svg viewBox="0 0 24 24" {...p}><rect x="3.5" y="5" width="17" height="15" rx="2.5" /><path d="M8 3v4M16 3v4M3.5 10h17" /></svg>,
+  briefcase: () => <svg viewBox="0 0 24 24" {...p}><rect x="3" y="7" width="18" height="13" rx="2.5" /><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M3 13h18" /></svg>,
   back: () => <svg viewBox="0 0 24 24" {...p}><path d="M15 5l-7 7 7 7" /></svg>,
   check: () => <svg viewBox="0 0 24 24" {...p}><path d="M5 12l4 4L19 7" /></svg>,
 };

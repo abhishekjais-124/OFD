@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { Briefing, Item, Section } from "@shared/schema";
 import { countdownIST, formatDateTimeIST, formatShortDateIST } from "@shared/ist";
 import { Chip, DataTable, FieldList, Flags, Icon, LinkList, PageRef } from "./ui.tsx";
@@ -28,7 +29,7 @@ function Countdown({ date, now, text }: { date: string | null; now: Date; text?:
   return <span className={`countdown ${c.state}`} title={text}>{c.label} · {formatShortDateIST(date)}{/eod/i.test(text ?? "") ? " EOD" : ""}</span>;
 }
 
-function ActionCard({ item, ctx }: { item: Item; ctx: Ctx }) {
+function ActionCard({ item, ctx, compact = false }: { item: Item; ctx: Ctx; compact?: boolean }) {
   const a = item.action!;
   return (
     <article className={`card${a.priority === "important" ? " danger" : ""} fade-in`}>
@@ -56,7 +57,9 @@ function ActionCard({ item, ctx }: { item: Item; ctx: Ctx }) {
           )}
         </div>
       </details>
-      <LinkList links={item.links} />
+      {compact
+        ? <div className="actions-row" style={{ marginTop: 10 }}><button className="btn sm" type="button" onClick={() => goTab("mail")}>{Icon.mail()} Open in Mail · {item.links.length} link{item.links.length === 1 ? "" : "s"}</button></div>
+        : <LinkList links={item.links} />}
     </article>
   );
 }
@@ -90,21 +93,42 @@ function GenericCard({ item, ctx, title }: { item: Item; ctx: Ctx; title?: strin
 }
 
 /* ---------- glance ---------- */
+const GLANCE_TARGET: Record<string, { tab: string; icon: () => ReactNode }> = {
+  mail: { tab: "mail", icon: Icon.mail },
+  calendar: { tab: "today", icon: Icon.calendar },
+  headlines: { tab: "news", icon: Icon.news },
+  question: { tab: "learn", icon: Icon.learn },
+  job: { tab: "learn", icon: Icon.briefcase },
+};
+
+function goTab(tab: string) {
+  const query = /\?.*$/.exec(location.hash)?.[0] ?? "";
+  location.hash = `#/${tab}${query}`;
+}
+
+/** The summary table as tappable tiles that open the matching tab. */
 function GlanceItem({ item, ctx }: { item: Item; ctx: Ctx }) {
   const table = item.tables[0];
   if (!table) return <GenericCard item={item} ctx={ctx} />;
   return (
-    <article className="card fade-in">
-      <div className="card-top"><div className="grow"><h3>At a glance</h3></div><PageRef page={item.page} pdfUrl={ctx.pdfUrl} /></div>
-      <dl className="fields" style={{ marginTop: 12 }}>
-        {table.rows.map((row, i) => (
-          <div key={i} style={{ display: "contents" }}>
-            <dt>{row[0]?.text}</dt>
-            <dd>{row.slice(1).map((c) => c.text).join(" ")}</dd>
-          </div>
-        ))}
-      </dl>
-    </article>
+    <div className="tiles fade-in">
+      {table.rows.map((row, i) => {
+        const label = row[0]?.text ?? "";
+        const target = GLANCE_TARGET[label.toLowerCase()];
+        const text = row.slice(1).map((c) => c.text).join(" ");
+        const urgent = /action item/i.test(text);
+        const inner = (
+          <>
+            <span className="tile-icon">{target ? target.icon() : null}</span>
+            <span className="tile-label">{label}</span>
+            <span className="tile-text">{text}</span>
+          </>
+        );
+        return target && target.tab !== "today"
+          ? <button key={i} type="button" className={`tile${urgent ? " urgent" : ""}`} onClick={() => goTab(target.tab)}>{inner}</button>
+          : <div key={i} className="tile">{inner}</div>;
+      })}
+    </div>
   );
 }
 
@@ -200,9 +224,9 @@ function JobsTable({ item, ctx }: { item: Item; ctx: Ctx }) {
 }
 
 /* ---------- dispatch ---------- */
-export function ItemView({ item, ctx }: { item: Item; ctx: Ctx }) {
+export function ItemView({ item, ctx, compact = false }: { item: Item; ctx: Ctx; compact?: boolean }) {
   switch (item.kind) {
-    case "action": return <ActionCard item={item} ctx={ctx} />;
+    case "action": return <ActionCard item={item} ctx={ctx} compact={compact} />;
     case "glance": return <GlanceItem item={item} ctx={ctx} />;
     case "headline": return <HeadlineCard item={item} ctx={ctx} />;
     case "question": return <QuestionCard item={item} ctx={ctx} />;

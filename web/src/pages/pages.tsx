@@ -5,7 +5,6 @@ import { Segmented } from "../components/nav.tsx";
 import { ItemView, NotesPanel } from "../components/sections.tsx";
 import { Chip, Icon } from "../components/ui.tsx";
 import { Upload } from "../components/Upload.tsx";
-import type { ThemeChoice } from "../theme.ts";
 import { filterSections, countItems } from "../search.ts";
 
 export interface PageProps {
@@ -59,7 +58,7 @@ export function TodayPage(p: PageProps) {
         </div>
       </div>
       {p.notices.map((n, i) => <div className="banner info" key={i}>{Icon.warn()}<div className="grow">{n}</div></div>)}
-      {actions.length > 0 && <Group title="Needs action" count={actions.length}>{actions.map((it) => <ItemView key={it.id} item={it} ctx={ctx} />)}</Group>}
+      {actions.length > 0 && <Group title="Needs action" count={actions.length}>{actions.map((it) => <ItemView key={it.id} item={it} ctx={ctx} compact />)}</Group>}
       {glance.length > 0 && <Group title="At a glance">{glance.map((it) => <ItemView key={it.id} item={it} ctx={ctx} />)}</Group>}
       {calendar.length > 0 && <Group title="Calendar">{calendar.map((it) => <ItemView key={it.id} item={it} ctx={ctx} />)}</Group>}
       {actions.length + glance.length + calendar.length === 0 && <Empty text="Nothing recognised for the Today page. Open More for every section." />}
@@ -164,8 +163,6 @@ export interface MoreProps extends PageProps {
   onReprocess: () => void;
   onUpload: (f: File) => void;
   onOpenDate: (d: string | "today") => void;
-  theme: ThemeChoice;
-  setTheme: (t: ThemeChoice) => void;
 }
 
 export function MorePage(p: MoreProps) {
@@ -205,10 +202,6 @@ export function MorePage(p: MoreProps) {
 
       <Group title="Read another PDF"><Upload onFile={p.onUpload} busy={p.busy !== null} /></Group>
 
-      <Group title="Appearance">
-        <div className="seg"><ThemeButtons value={p.theme} onChange={p.setTheme} /></div>
-      </Group>
-
       {other.length > 0 && other.map((s) => (
         <Group key={s.id} title={s.title} count={s.items.length}>{s.items.map((i) => <ItemView key={i.id} item={i} ctx={ctx} />)}</Group>
       ))}
@@ -218,13 +211,9 @@ export function MorePage(p: MoreProps) {
   );
 }
 
-function ThemeButtons({ value, onChange }: { value: ThemeChoice; onChange: (t: ThemeChoice) => void }) {
-  const opts: { id: ThemeChoice; label: string }[] = [{ id: "system", label: "System" }, { id: "light", label: "Light" }, { id: "dark", label: "Dark" }];
-  return <>{opts.map((o) => <button key={o.id} type="button" className={value === o.id ? "on" : ""} onClick={() => onChange(o.id)}>{o.label}</button>)}</>;
-}
 
 /** More page when there is no briefing to show (missing, error): days, upload and appearance still work. */
-export function MoreLite(p: Pick<MoreProps, "busy" | "availableDates" | "onUpload" | "onOpenDate" | "theme" | "setTheme" | "todayIST">) {
+export function MoreLite(p: Pick<MoreProps, "busy" | "availableDates" | "onUpload" | "onOpenDate" | "todayIST">) {
   return (
     <>
       {p.availableDates.length > 0 && (
@@ -235,7 +224,6 @@ export function MoreLite(p: Pick<MoreProps, "busy" | "availableDates" | "onUploa
         </Group>
       )}
       <Group title="Read a PDF"><Upload onFile={p.onUpload} busy={p.busy !== null} /></Group>
-      <Group title="Appearance"><div className="seg"><ThemeButtons value={p.theme} onChange={p.setTheme} /></div></Group>
     </>
   );
 }

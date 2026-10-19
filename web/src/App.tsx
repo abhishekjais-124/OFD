@@ -5,7 +5,6 @@ import { AppBar, TabBar, type Tab } from "./components/nav.tsx";
 import { ErrorState, MissingState, OfflineBanner, Skeleton } from "./components/states.tsx";
 import { Icon, ToastProvider, useToast } from "./components/ui.tsx";
 import { LearnPage, MailPage, MoreLite, MorePage, NewsPage, SearchPage, TodayPage, type PageProps } from "./pages/pages.tsx";
-import { useTheme } from "./theme.ts";
 
 type Route = Tab | "search";
 /** What is being read: today's file, a specific day, or an uploaded file. */
@@ -37,7 +36,6 @@ export function App() {
 }
 
 function Shell() {
-  const theme = useTheme();
   const toast = useToast();
   const initial = parseHash();
   const [route, setRoute] = useState<Route>(initial.route);
@@ -143,7 +141,7 @@ function Shell() {
   const todayIST = response?.todayIST ?? "";
   const moreCommon = {
     busy, availableDates: response?.availableDates ?? [], onUpload: (f: File) => void upload(f), onOpenDate: openDate,
-    theme: theme.choice, setTheme: theme.set, todayIST,
+    todayIST,
   };
 
   let body: React.ReactNode;
