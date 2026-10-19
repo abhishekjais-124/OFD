@@ -69,8 +69,9 @@ function ActionCard({ item, ctx, compact = false }: { item: Item; ctx: Ctx; comp
 function CalendarCard({ item, ctx }: { item: Item; ctx: Ctx }) {
   const st = parseCalendarStatus(item.lines);
   if (!st.recognized) return <GenericCard item={item} ctx={ctx} />;
-  const rows: { label: string; value: string | null; icon: () => ReactNode }[] = [
+  const rows: { label: string; value: string | null; icon: () => ReactNode; unreported?: boolean }[] = [
     { label: "Meetings", value: st.meetings, icon: Icon.calendar },
+    { label: "Interviews", value: st.interviews, icon: Icon.briefcase, unreported: !st.interviewsReported },
     { label: "On call", value: st.onCall, icon: Icon.pin },
     { label: "RSVP needed", value: st.rsvp, icon: Icon.mail },
   ];
@@ -92,10 +93,10 @@ function CalendarCard({ item, ctx }: { item: Item; ctx: Ctx }) {
       </div>
       <ul className="cal-rows">
         {rows.map((r) => (
-          <li key={r.label} className={r.value ? "on" : ""}>
+          <li key={r.label} className={`${r.value ? "on" : ""}${r.unreported ? " unreported" : ""}`}>
             <span className="cal-ico">{r.icon()}</span>
             <span className="cal-label">{r.label}</span>
-            <span className="cal-value">{r.value ?? "None"}</span>
+            <span className="cal-value">{r.unreported ? "Not in this briefing" : r.value ?? "None"}</span>
           </li>
         ))}
       </ul>

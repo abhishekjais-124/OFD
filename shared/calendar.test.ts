@@ -9,7 +9,7 @@ describe("parseCalendarStatus", () => {
       "Meetings: none. On call: none. RSVP needed: none.",
       "Calendar: https://calendar.google.com/calendar/u/0/r/week/2026/10/19",
     ]);
-    expect(s).toMatchObject({ meetings: null, onCall: null, rsvp: null, recognized: true });
+    expect(s).toMatchObject({ meetings: null, onCall: null, rsvp: null, recognized: true, interviews: null, interviewsReported: false });
     expect(s.checked).toContain("the next 7 days (19 to 25 Oct)");
     expect(s.checked).toContain('calendar.');
     expect(s.checked).not.toContain("Meetings");
@@ -24,6 +24,16 @@ describe("parseCalendarStatus", () => {
     expect(s.meetings).toBe("Team sync, 11:00 to 11:30 AM IST");
     expect(s.onCall).toBe("Primary until Friday");
     expect(s.rsvp).toBe("Design review");
+  });
+
+  it("reads an Interviews line wherever it sits", () => {
+    const s = parseCalendarStatus(["Meetings: none. Interviews: Backend loop with Priya, 3:00 PM IST. On call: none. RSVP needed: none."]);
+    expect(s.interviews).toBe("Backend loop with Priya, 3:00 PM IST");
+    expect(s.interviewsReported).toBe(true);
+    expect(s.meetings).toBeNull();
+    expect(s.onCall).toBeNull();
+    const none = parseCalendarStatus(["Meetings: none. On call: none. Interviews: none. RSVP needed: none."]);
+    expect(none).toMatchObject({ interviews: null, interviewsReported: true });
   });
 
   it("does not misread an unrelated card", () => {

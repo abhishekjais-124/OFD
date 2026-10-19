@@ -524,3 +524,6 @@ details[open] > summary .chev { transform: rotate(180deg); }
 .btn.quiet { background: transparent; border: 1px solid var(--border-strong); color: var(--text-2); font-weight: 600; box-shadow: none; }
 .btn.quiet:hover { background: var(--surface-2); color: var(--text); }
 .cal-foot .btn.icon { background: transparent; color: var(--text-2); }
+
+.cal-rows li.unreported { border-style: dashed; background: transparent; }
+.cal-rows li.unreported .cal-value { color: var(--text-3); font-weight: 500; font-size: 14px; }

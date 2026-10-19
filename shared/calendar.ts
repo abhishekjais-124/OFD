@@ -7,11 +7,15 @@ export interface CalendarStatus {
   meetings: string | null;
   onCall: string | null;
   rsvp: string | null;
+  /** Interviews, when the briefing has an "Interviews:" line; null means none. */
+  interviews: string | null;
+  /** False when the briefing has no Interviews line at all, so "none" must not be claimed. */
+  interviewsReported: boolean;
   /** True when at least one of the three labels was found. */
   recognized: boolean;
 }
 
-const LABELS = ["Checked", "Meetings", "On call", "RSVP needed", "Calendar"] as const;
+const LABELS = ["Checked", "Meetings", "Interviews", "On call", "RSVP needed", "Calendar"] as const;
 const NONE_RE = /^(none|no|nil|n\/a|nothing|-)$/i;
 
 function clean(value: string): string | null {
@@ -39,6 +43,8 @@ export function parseCalendarStatus(lines: string[]): CalendarStatus {
     meetings: get("Meetings"),
     onCall: get("On call"),
     rsvp: get("RSVP needed"),
+    interviews: get("Interviews"),
+    interviewsReported: values.has("Interviews"),
     recognized: ["Meetings", "On call", "RSVP needed"].some((l) => values.has(l)),
   };
 }
