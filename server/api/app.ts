@@ -1,0 +1,108 @@
+import express, { type Express } from "express";
+import type { StatusResponse } from "../../shared/schema.ts";
+import { isIsoDate } from "../../shared/ist.ts";
+import type { Pipeline } from "../pipeline.ts";
+
+export interface AppDeps {
+  pipeline: Pipeline;
+  status: Omit<StatusResponse, "todayIST" | "parserVersion">;
+  /** Directory of the built web app; when set, it is served as static files. */
+  staticDir?: string;
+}
+
+export function createApp(deps: AppDeps): Express {
+  const app = express();
+  const { pipeline } = deps;
+  app.disable("x-powered-by");
+
+  app.get("/api/status", (_req, res) => {
+    const body: StatusResponse = { ...deps.status, todayIST: pipeline.todayIST(), parserVersion: pipeline.parserVersion };
+    res.json(body);
+  });
+
+  app.get("/api/today", async (req, res) => {
+    res.json(await pipeline.today({ refresh: req.query.refresh === "1" }));
+  });
+
+  app.get("/api/briefings", async (req, res) => {
+    try {
+      const availableDates = await pipeline.listDates(req.query.refresh === "1");
+      res.json({ todayIST: pipeline.todayIST(), availableDates, cached: pipeline.listCached() });
+    } catch (err) {
+      res.json({ todayIST: pipeline.todayIST(), availableDates: [], cached: pipeline.listCached(), error: (err as Error).message });
+    }
+  });
+
+  app.get("/api/briefings/:date", async (req, res) => {
+    const date = String(req.params.date);
+    if (!isIsoDate(date)) {
+      res.status(400).json({ error: { code: "bad_date", message: "date must be YYYY-MM-DD", retryable: false } });
+      return;
+    }
+    res.json(await pipeline.forDate(date, { refresh: req.query.refresh === "1" }));
+  });
+
+  app.post("/api/briefings/:date/refresh", async (req, res) => {
+    const date = String(req.params.date);
+    if (!isIsoDate(date)) {
+      res.status(400).json({ error: { code: "bad_date", message: "date must be YYYY-MM-DD", retryable: false } });
+      return;
+    }
+    res.json(await pipeline.forDate(date, { refresh: true }));
+  });
+
+  app.post("/api/documents/:key/reprocess", async (req, res) => {
+    res.json(await pipeline.reprocess(String(req.params.key)));
+  });
+
+  app.get("/api/documents/:key", (req, res) => {
+    const briefing = pipeline.cached(String(req.params.key));
+    if (!briefing) {
+      res.status(404).json({ error: { code: "not_cached", message: "no processed result for this key", retryable: false } });
+      return;
+    }
+    res.json(briefing);
+  });
+
+  app.get("/api/documents/:key/pdf", (req, res) => {
+    const pdf = pipeline.pdf(String(req.params.key));
+    if (!pdf) {
+      res.status(404).json({ error: { code: "not_cached", message: "no cached PDF for this key", retryable: false } });
+      return;
+    }
+    res.setHeader("content-type", "application/pdf");
+    res.setHeader("content-disposition", `inline; filename="${pdf.fileName.replace(/"/g, "")}"`);
+    res.setHeader("cache-control", "private, max-age=3600");
+    res.send(pdf.bytes);
+  });
+
+  app.get("/api/images/:id.png", (req, res) => {
+    const file = pipeline.imagePath(String(req.params.id));
+    if (!file) {
+      res.status(404).end();
+      return;
+    }
+    res.setHeader("cache-control", "public, max-age=31536000, immutable");
+    res.sendFile(file);
+  });
+
+  app.post("/api/upload", express.raw({ type: () => true, limit: "60mb" }), async (req, res) => {
+    const bytes = req.body as Buffer | undefined;
+    if (!bytes || !Buffer.isBuffer(bytes) || bytes.length === 0) {
+      res.status(400).json({ error: { code: "empty_upload", message: "send the PDF bytes as the request body", retryable: false } });
+      return;
+    }
+    const name = decodeURIComponent(String(req.get("x-file-name") ?? "upload.pdf"));
+    res.json(await pipeline.processUpload(bytes, name));
+  });
+
+  if (deps.staticDir) {
+    app.use(express.static(deps.staticDir, { index: "index.html" }));
+    app.get(/^\/(?!api\/).*/, (_req, res) => res.sendFile("index.html", { root: deps.staticDir }));
+  }
+
+  app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    res.status(500).json({ error: { code: "unexpected", message: err.message, retryable: true } });
+  });
+  return app;
+}
