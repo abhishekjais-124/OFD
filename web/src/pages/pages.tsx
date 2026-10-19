@@ -3,8 +3,9 @@ import type { Briefing, Item, Section } from "@shared/schema";
 import { formatDateTimeIST, formatLongDateIST, greetingIST, nameFromGreetingTitle } from "@shared/ist";
 import { Segmented } from "../components/nav.tsx";
 import { AlertList, UpdateRow } from "../components/mail.tsx";
+import { LeadStory, StoryRow } from "../components/news.tsx";
 import { ItemView, NotesPanel } from "../components/sections.tsx";
-import { Chip, Icon } from "../components/ui.tsx";
+import { Chip, Icon, LinkChips } from "../components/ui.tsx";
 import { Upload } from "../components/Upload.tsx";
 import { SkyScene, WeatherIcon, type WeatherState } from "../weather.tsx";
 import { filterSections, countItems } from "../search.ts";
@@ -142,6 +143,17 @@ export function MailPage(p: PageProps) {
 }
 
 /* ---------------- News ---------------- */
+/** "feeds.bbci.co.uk/news/world" for an RSS address, so two feeds are told apart. */
+function feedLabel(url: string): string {
+  try {
+    const u = new URL(url);
+    const path = u.pathname.replace(/\/(rss|feed|atom)(\.xml)?$/i, "").replace(/^\/|\/$/g, "");
+    return `${u.hostname}${path ? `/${path}` : ""}`;
+  } catch {
+    return url;
+  }
+}
+
 function shortTitle(t: string): string {
   return t.replace(/\s*\(.*?\)\s*/g, " ").replace(/\s*headlines\s*/i, " ").trim() || t;
 }
@@ -152,15 +164,29 @@ export function NewsPage(p: PageProps) {
   const [id, setId] = useState<string>(sections[0]?.id ?? "");
   if (!sections.length) return <Empty text="No headlines section in this briefing." />;
   const active = sections.find((s) => s.id === id) ?? sections[0]!;
-  const stories = active.items.filter((i) => i.kind === "headline");
-  const other = active.items.filter((i) => i.kind !== "headline");
+  const stories = active.items.filter((i) => i.kind === "headline" && i.headline);
+  const other = active.items.filter((i) => !(i.kind === "headline" && i.headline));
+  const [lead, ...rest] = stories;
+  const sourceLinks = other.flatMap((i) => i.links).map((l) => ({ ...l, label: feedLabel(l.url) }));
+  const sourceText = other.flatMap((i) => i.lines).join(" ")
+    .replace(/https?:\/\/\S+/g, " ")
+    .replace(/^\s*Feeds:\s*/i, "")
+    .replace(/^[\s·.,;]+/, "")
+    .replace(/\s+/g, " ")
+    .trim();
   return (
     <>
-      <Segmented value={active.id} onChange={setId} options={sections.map((s) => ({ id: s.id, label: `${shortTitle(s.title)}` }))} />
-      <div className="section"><div className="section-head"><h2>{active.title}</h2><span className="count">{stories.length}</span></div>
-        <div className="stack">{stories.map((i) => <ItemView key={i.id} item={i} ctx={ctx} />)}</div>
-      </div>
-      {other.length > 0 && <Group title="Sources">{other.map((i) => <ItemView key={i.id} item={i} ctx={ctx} />)}</Group>}
+      <Segmented value={active.id} onChange={setId} options={sections.map((s) => ({ id: s.id, label: `${shortTitle(s.title)} · ${s.items.filter((i) => i.kind === "headline").length}` }))} />
+      {lead && <LeadStory key={`lead-${active.id}`} item={lead} ctx={ctx} />}
+      {rest.length > 0 && <div className="stories">{rest.map((i) => <StoryRow key={i.id} item={i} ctx={ctx} />)}</div>}
+      {stories.length === 0 && <Empty text="No stories in this section." />}
+      {(sourceLinks.length > 0 || sourceText) && (
+        <section className="news-sources">
+          <p className="news-sources-head">Sources</p>
+          {sourceText && <p className="news-note">{sourceText}</p>}
+          <LinkChips links={sourceLinks} />
+        </section>
+      )}
     </>
   );
 }

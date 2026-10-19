@@ -170,3 +170,16 @@ export function nameFromGreetingTitle(title: string): string | null {
   const m = /^[^,]{2,30},\s*([\p{L}][\p{L}\p{M}'’. -]{0,40}?)\s*[^\p{L}\p{N}]*$/u.exec(title.trim());
   return m ? m[1]!.trim() : null;
 }
+
+/** "just now", "12 min ago", "3 h ago", "yesterday", "4 d ago", or a short date for older items. Future times read as "just now". */
+export function timeAgo(instant: Date, now: Date = new Date()): string {
+  const mins = Math.floor((now.getTime() - instant.getTime()) / 60_000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins} min ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} h ago`;
+  const days = Math.round((startOfDayIST(toIsoDateIST(now)).getTime() - startOfDayIST(toIsoDateIST(instant)).getTime()) / 86_400_000);
+  if (days <= 1) return "yesterday";
+  if (days < 7) return `${days} d ago`;
+  return formatShortDateIST(toIsoDateIST(instant));
+}

@@ -108,3 +108,21 @@ describe("nameFromGreetingTitle", () => {
     expect(nameFromGreetingTitle("Briefing")).toBeNull();
   });
 });
+
+import { timeAgo } from "./ist.ts";
+
+describe("timeAgo", () => {
+  const now = new Date("2026-10-19T12:00:00Z"); // 17:30 IST on 19 Oct
+  const ago = (iso: string) => timeAgo(new Date(iso), now);
+  it("uses minutes, hours, yesterday, days and a date", () => {
+    expect(ago("2026-10-19T11:59:40Z")).toBe("just now");
+    expect(ago("2026-10-19T11:48:00Z")).toBe("12 min ago");
+    expect(ago("2026-10-19T09:00:00Z")).toBe("3 h ago");
+    expect(ago("2026-10-18T09:00:00Z")).toBe("yesterday");
+    expect(ago("2026-10-16T09:00:00Z")).toBe("3 d ago");
+    expect(ago("2026-10-01T09:00:00Z")).toBe("1 Oct 2026");
+  });
+  it("treats future times as just now", () => {
+    expect(ago("2026-10-19T13:00:00Z")).toBe("just now");
+  });
+});
