@@ -1,6 +1,6 @@
 import type { Item } from "@shared/schema";
 import { formatDateTimeIST, timeAgo } from "@shared/ist";
-import { Icon, PageRef } from "./ui.tsx";
+import { Icon } from "./ui.tsx";
 
 const TONES = ["#8b9dff", "#6ee0a3", "#ffc069", "#ff8a80", "#c79bff", "#7fd6e8"];
 
@@ -14,6 +14,17 @@ function toneFor(name: string): string {
 function initials(name: string): string {
   const parts = name.replace(/[^\p{L}\p{N} ]/gu, "").trim().split(/\s+/).filter(Boolean);
   return ((parts[0]?.[0] ?? "?") + (parts.length > 1 ? parts[parts.length - 1]![0]! : "")).toUpperCase();
+}
+
+/** Slack text as people read it: no "<loc>" style tags, code fences or link brackets. */
+export function cleanMessage(text: string): string {
+  return text
+    .replace(/```/g, "")
+    .replace(/<\/?[a-z][\w-]*>/gi, " ")
+    .replace(/<(https?:\/\/[^|>]+)\|([^>]+)>/g, "$2")
+    .replace(/<(https?:\/\/[^>]+)>/g, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 /** One Slack mention: who, where, what, when. The whole row opens the message. */
@@ -31,7 +42,7 @@ export function MentionRow({ item, now, pdfUrl }: { item: Item; now: Date; pdfUr
           {m.where && <span className="mention-where">{m.where}</span>}
           <span className="mention-when" title={full}>{when}</span>
         </span>
-        <span className="mention-msg">{m.text}</span>
+        <span className="mention-msg">{cleanMessage(m.text)}</span>
       </span>
     </>
   );
@@ -39,7 +50,6 @@ export function MentionRow({ item, now, pdfUrl }: { item: Item; now: Date; pdfUr
     <div className="mention">
       {m.url ? <a className="mention-main" href={m.url} target="_blank" rel="noreferrer" title="Open in Slack">{body}</a> : <div className="mention-main">{body}</div>}
       <span className="mention-side">
-        <PageRef page={item.page} pdfUrl={pdfUrl} />
         {m.url && <a className="btn ghost icon" href={m.url} target="_blank" rel="noreferrer" aria-label={`Open ${m.from}'s message in Slack`}>{Icon.open()}</a>}
       </span>
     </div>

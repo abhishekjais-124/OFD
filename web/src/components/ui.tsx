@@ -74,14 +74,6 @@ export async function copyText(text: string): Promise<boolean> {
 }
 
 /* ---------- small pieces ---------- */
-export function PageRef({ page, pdfUrl }: { page: number; pdfUrl: string }) {
-  return (
-    <a className="pageref" href={`${pdfUrl}#page=${page}`} target="_blank" rel="noreferrer" title={`Open page ${page} of the original PDF`}>
-      p. {page}
-    </a>
-  );
-}
-
 const FLAG_LABEL: Record<ItemFlag, { text: string; cls: string }> = {
   ocr: { text: "OCR, lower confidence", cls: "warn" },
   low_confidence: { text: "low confidence", cls: "warn" },

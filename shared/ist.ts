@@ -193,3 +193,21 @@ export function dayLabel(date: IsoDate, today: IsoDate): string {
   const weekday = WEEKDAYS[new Date(Date.UTC(p.year, p.month - 1, p.day)).getUTCDay()]!.slice(0, 3);
   return `${weekday} ${p.day} ${MONTHS[p.month - 1]}`;
 }
+
+const SHORT_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+
+/** The seven dates of the Monday-to-Sunday week that contains `today`. */
+export function weekDates(today: IsoDate): IsoDate[] {
+  const base = new Date(`${today}T00:00:00Z`);
+  const sinceMonday = (base.getUTCDay() + 6) % 7;
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(base.getTime() + (i - sinceMonday) * 86_400_000);
+    return d.toISOString().slice(0, 10) as IsoDate;
+  });
+}
+
+/** "Mon" and the day of the month ("19") for an IST date. */
+export function weekdayParts(date: IsoDate): { weekday: string; day: number } {
+  const d = new Date(`${date}T00:00:00Z`);
+  return { weekday: SHORT_DAYS[d.getUTCDay()]!, day: d.getUTCDate() };
+}

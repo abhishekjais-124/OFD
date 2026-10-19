@@ -1,6 +1,6 @@
 import type { Item } from "@shared/schema";
 import { alertTone, parseGithubTitle, parseShareTitle } from "@shared/mail";
-import { Icon, LinkChips, PageRef, useToast, copyText } from "./ui.tsx";
+import { Icon, LinkChips, useToast, copyText } from "./ui.tsx";
 
 interface Ctx { pdfUrl: string }
 
@@ -21,7 +21,6 @@ export function UpdateRow({ item, ctx }: { item: Item; ctx: Ctx }) {
           <span className="mrow-title">{heading}</span>
           {sub && <span className="mrow-sub">{sub}</span>}
         </span>
-        <PageRef page={item.page} pdfUrl={ctx.pdfUrl} />
         {hasMore && Icon.chev()}
       </summary>
       {hasMore && (
@@ -71,7 +70,6 @@ export function AlertList({ item, ctx }: { item: Item; ctx: Ctx }) {
           <span className="mrow-title">Automated alerts</span>
           <span className="mrow-sub">{loud.length} to look at{quiet.length ? ` · ${quiet.length} ignorable` : ""}</span>
         </span>
-        <PageRef page={item.page} pdfUrl={ctx.pdfUrl} />
         {Icon.chev()}
       </summary>
       <ul className="alist">

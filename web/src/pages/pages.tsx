@@ -6,10 +6,10 @@ import { Segmented } from "../components/nav.tsx";
 import { AlertList, UpdateRow } from "../components/mail.tsx";
 import { JobView, QuestionView } from "../components/learn.tsx";
 import { MentionList } from "../components/mentions.tsx";
-import { LeadStory, StoryRow } from "../components/news.tsx";
+import { NewsCarousel, StoryRow } from "../components/news.tsx";
 import { mixStories } from "@shared/news";
 import { ItemView } from "../components/sections.tsx";
-import { Chip, Icon, LinkChips } from "../components/ui.tsx";
+import { Chip, Icon } from "../components/ui.tsx";
 import { ActionRow, AboutRow, BriefingHeader, DayPills, NotesRow, SettingsGroup, SourcesRow, UploadRow } from "../components/more.tsx";
 import { SkyScene, WeatherIcon, type WeatherState } from "../weather.tsx";
 import { filterSections, countItems } from "../search.ts";
@@ -33,10 +33,10 @@ function Empty({ text }: { text: string }) {
   return <div className="state"><p>{text}</p></div>;
 }
 
-function Group({ title, count, children }: { title: string; count?: number; children: React.ReactNode }) {
+function Group({ title, count, pill, children }: { title: string; count?: number; pill?: "danger" | "accent"; children: React.ReactNode }) {
   return (
     <section className="section">
-      <div className="section-head"><h2>{title}</h2>{count !== undefined && <span className="count">{count}</span>}</div>
+      <div className="section-head"><h2>{title}</h2>{count !== undefined && <span className={`count${pill ? ` pill ${pill}` : ""}`}>{count}</span>}</div>
       <div className="stack">{children}</div>
     </section>
   );
@@ -64,8 +64,8 @@ function WeatherReadout({ state, onLocate }: { state: WeatherState; onLocate: ()
       <span className="wx-icon"><WeatherIcon sky={w.sky} isDay={w.isDay} /></span>
       <span className="wx-temp">{w.tempC}°</span>
       <div className="wx-meta">
-        <strong>{w.label}</strong>
-        <span>{[w.place, `feels ${w.feelsC}°`, w.highC !== null && w.lowC !== null ? `H ${w.highC}° L ${w.lowC}°` : null].filter(Boolean).join(" · ")}</span>
+        <strong>{w.label}{w.place && <span className="wx-place"> · {w.place}</span>}</strong>
+        <span>{[`Feels ${w.feelsC}°`, w.highC !== null && w.lowC !== null ? `H ${w.highC}° · L ${w.lowC}°` : null].filter(Boolean).join(" · ")}</span>
       </div>
     </div>
   );
@@ -111,7 +111,12 @@ export function TodayPage(p: PageProps) {
           <MentionList items={mentions} now={p.now} pdfUrl={b.pdfUrl} max={3} />
         </section>
       )}
-      {glance.length > 0 && <Group title="At a glance">{glance.map((it) => <ItemView key={it.id} item={it} ctx={ctx} />)}</Group>}
+      {glance.length > 0 && (
+        <details className="glance-fold">
+          <summary><span>At a glance</span>{Icon.chev()}</summary>
+          <div className="stack">{glance.map((it) => <ItemView key={it.id} item={it} ctx={ctx} />)}</div>
+        </details>
+      )}
       {calendar.length > 0 && <Group title="Calendar">{calendar.map((it) => <ItemView key={it.id} item={it} ctx={ctx} />)}</Group>}
       {actions.length + glance.length + calendar.length + slackSection.length === 0 && <Empty text="Nothing recognised for the Today page. Open More for every section." />}
     </>
@@ -127,19 +132,12 @@ export function MailPage(p: PageProps) {
   const updates = items.filter((i) => i.kind === "github" || i.kind === "share");
   const rest = items.filter((i) => !important.includes(i) && !alerts.includes(i) && !updates.includes(i));
   if (!items.length) return <Empty text="No mail section in this briefing." />;
-  const alertCount = alerts.reduce((n, a) => n + (a.tables[0]?.rows.length ?? 0), 0);
-  const summary = [
-    important.length ? `${important.length} needs action` : "nothing needs action",
-    updates.length ? `${updates.length} update${updates.length === 1 ? "" : "s"}` : null,
-    alertCount ? `${alertCount} alert${alertCount === 1 ? "" : "s"}` : null,
-  ].filter(Boolean).join(" · ");
   return (
     <>
-      <p className="mail-summary">{summary}</p>
-      {important.length > 0 && <Group title="Needs action">{important.map((i) => <ItemView key={i.id} item={i} ctx={ctx} />)}</Group>}
+      {important.length > 0 && <Group title="Needs action" count={important.length} pill="danger">{important.map((i) => <ItemView key={i.id} item={i} ctx={ctx} />)}</Group>}
       {updates.length > 0 && (
         <section className="section">
-          <div className="section-head"><h2>Updates</h2><span className="count">{updates.length}</span></div>
+          <div className="section-head"><h2>Updates</h2><span className="count pill accent">{updates.length}</span></div>
           <div className="mlist">{updates.map((i) => <UpdateRow key={i.id} item={i} ctx={ctx} />)}</div>
         </section>
       )}
@@ -155,54 +153,55 @@ export function MailPage(p: PageProps) {
 }
 
 /* ---------------- News ---------------- */
-/** "feeds.bbci.co.uk/news/world" for an RSS address, so two feeds are told apart. */
-function feedLabel(url: string): string {
-  try {
-    const u = new URL(url);
-    const path = u.pathname.replace(/\/(rss|feed|atom)(\.xml)?$/i, "").replace(/^\/|\/$/g, "");
-    return `${u.hostname}${path ? `/${path}` : ""}`;
-  } catch {
-    return url;
-  }
-}
+const CAROUSEL_COUNT = 3;
 
 function shortTitle(t: string): string {
   return t.replace(/\s*\(.*?\)\s*/g, " ").replace(/\s*headlines\s*/i, " ").trim() || t;
 }
 
-/** Most stories shown on the News page: a short, mixed list rather than every headline. */
+/** Most world and India stories shown on the News page: a short, mixed list rather than every headline. */
 const NEWS_MAX = 5;
+/** Tech and AI stories get their own carousel at the bottom. */
+const TECH_MAX = 4;
+const isTech = (title: string) => /\b(tech|ai)\b/i.test(title);
 
 export function NewsPage(p: PageProps) {
   const ctx = ctxOf(p);
   const sections = sectionsOf(p.briefing, "headlines");
   if (!sections.length) return <Empty text="No headlines section in this briefing." />;
-  const groups = sections.map((s) => s.items.filter((i) => i.kind === "headline" && i.headline).map((item) => ({ item, time: item.headline!.timestamp ? Date.parse(item.headline!.timestamp) : null })));
-  const picked = mixStories(groups, NEWS_MAX);
-  const [lead, ...rest] = picked;
-  const tags = sections.map((s) => shortTitle(s.title));
-  const other = sections.flatMap((s) => s.items.filter((i) => !(i.kind === "headline" && i.headline)));
-  const total = groups.reduce((n, g) => n + g.length, 0);
-  const sourceLinks = other.flatMap((i) => i.links).map((l) => ({ ...l, label: feedLabel(l.url) }));
-  const sourceText = other.flatMap((i) => i.lines).join(" ")
-    .replace(/https?:\/\/\S+/g, " ")
-    .replace(/^\s*Feeds:\s*/i, "")
-    .replace(/^[\s·.,;]+/, "")
-    .replace(/\s+/g, " ")
-    .trim();
+  const storiesOf = (s: (typeof sections)[number]) => s.items.filter((i) => i.kind === "headline" && i.headline).map((item) => ({ item, time: item.headline!.timestamp ? Date.parse(item.headline!.timestamp) : null }));
+  const main = sections.filter((s) => !isTech(s.title));
+  const techSections = sections.filter((s) => isTech(s.title));
+  const picked = mixStories(main.map(storiesOf), NEWS_MAX);
+  const tags = main.map((s) => shortTitle(s.title));
+  // the top stories swipe as cards; the rest stay as the compact list underneath
+  const featured = picked.slice(0, CAROUSEL_COUNT);
+  const rest = picked.slice(CAROUSEL_COUNT);
+  const tech = techSections
+    .flatMap((s) => storiesOf(s))
+    .sort((a, b) => (b.time ?? -Infinity) - (a.time ?? -Infinity))
+    .slice(0, TECH_MAX);
   return (
     <>
-      <p className="mail-summary">{picked.length} of {total} stories · {tags.join(" & ")}, newest first</p>
-      {lead && <LeadStory key={lead.story.item.id} item={lead.story.item} ctx={ctx} tag={tags[lead.group]} />}
-      {rest.length > 0 && <div className="stories">{rest.map((r) => <StoryRow key={r.story.item.id} item={r.story.item} ctx={ctx} tag={tags[r.group]} />)}</div>}
-      {picked.length === 0 && <Empty text="No stories in this briefing." />}
-      {(sourceLinks.length > 0 || sourceText) && (
-        <section className="news-sources">
-          <p className="news-sources-head">Sources</p>
-          {sourceText && <p className="news-note">{sourceText}</p>}
-          <LinkChips links={sourceLinks} />
+      {featured.length > 0 && (
+        <section className="news-block">
+          <div className="section-head"><h2>Top stories</h2></div>
+          <NewsCarousel stories={featured.map((r) => ({ item: r.story.item, tag: tags[r.group] }))} ctx={ctx} />
         </section>
       )}
+      {rest.length > 0 && (
+        <section className="section news-block">
+          <div className="section-head"><h2>Also today</h2><span className="count">{rest.length}</span></div>
+          <div className="stories">{rest.map((r) => <StoryRow key={r.story.item.id} item={r.story.item} ctx={ctx} tag={tags[r.group]} />)}</div>
+        </section>
+      )}
+      {tech.length > 0 && (
+        <section className="section news-tech">
+          <div className="section-head"><h2>Tech &amp; AI</h2><span className="count pill accent">{tech.length}</span></div>
+          <NewsCarousel stories={tech.map((t) => ({ item: t.item, tag: "Tech & AI" }))} ctx={ctx} label="Tech and AI stories" />
+        </section>
+      )}
+      {picked.length + tech.length === 0 && <Empty text="No stories in this briefing." />}
     </>
   );
 }
@@ -371,7 +370,7 @@ export function MorePage(p: MoreProps) {
   const pick = (d: string) => p.onOpenDate(d === p.todayIST ? "today" : d);
   return (
     <>
-      <BriefingHeader briefing={b} cached={p.cached} busy={p.busy} canRefresh={!upload} onRefresh={p.onRefresh} onReprocess={p.onReprocess} />
+      <BriefingHeader briefing={b} cached={p.cached} now={p.now} busy={p.busy} canRefresh={!upload} onRefresh={p.onRefresh} onReprocess={p.onReprocess} />
 
       <SettingsGroup title="Open">
         <div className="mlist">
@@ -401,7 +400,18 @@ export function MorePage(p: MoreProps) {
       {extra.map((s) => (
         <Group key={s.id} title={s.title} count={s.items.length}>{s.items.map((i) => <ItemView key={i.id} item={i} ctx={ctx} />)}</Group>
       ))}
+      <Signature />
     </>
+  );
+}
+
+/** The maker's mark at the very end of the app. */
+function Signature() {
+  return (
+    <footer className="signature" aria-label="Made by AJ">
+      <span className="sig-mark" aria-hidden="true">AJ</span>
+      <span className="sig-text">OFD · Of the Day</span>
+    </footer>
   );
 }
 
@@ -415,6 +425,7 @@ export function MoreLite(p: Pick<MoreProps, "busy" | "availableDates" | "onUploa
         </SettingsGroup>
       )}
       <SettingsGroup title="Read a PDF"><div className="mlist"><UploadRow onFile={p.onUpload} busy={p.busy !== null} /></div></SettingsGroup>
+      <Signature />
     </>
   );
 }
