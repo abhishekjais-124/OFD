@@ -1,5 +1,6 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import type { Briefing, Item, Section } from "@shared/schema";
+import { splitSteps } from "@shared/actions";
 import { parseCalendarStatus } from "@shared/calendar";
 import { countdownIST, formatDateTimeIST, formatShortDateIST } from "@shared/ist";
 import { Chip, CopyButton, DataTable, FieldList, Flags, Icon, LinkList, PageRef } from "./ui.tsx";
@@ -30,8 +31,48 @@ function Countdown({ date, now, text }: { date: string | null; now: Date; text?:
   return <span className={`countdown ${c.state}`} title={text}>{c.label} · {formatShortDateIST(date)}{/eod/i.test(text ?? "") ? " EOD" : ""}</span>;
 }
 
+const DONE_KEY = "ofd.done";
+function loadDone(): Record<string, true> {
+  try { return JSON.parse(localStorage.getItem(DONE_KEY) ?? "{}") as Record<string, true>; } catch { return {}; }
+}
+
+/** Key steps as tick-off rows; ticks are remembered on this device. */
+function Checklist({ scope, steps }: { scope: string; steps: { n: number; text: string }[] }) {
+  const [done, setDone] = useState(loadDone);
+  const idOf = (text: string) => `${scope}|${text.slice(0, 60)}`;
+  const toggle = (text: string) => {
+    const id = idOf(text);
+    setDone((prev) => {
+      const next = { ...prev };
+      if (next[id]) delete next[id]; else next[id] = true;
+      try { localStorage.setItem(DONE_KEY, JSON.stringify(next)); } catch { /* private mode */ }
+      return next;
+    });
+  };
+  const left = steps.filter((st) => !done[idOf(st.text)]).length;
+  return (
+    <div className="todo">
+      <p className="todo-head"><span>Actions to take</span><span className="todo-count">{left === 0 ? "all done" : `${left} of ${steps.length} left`}</span></p>
+      <ul>
+        {steps.map((st) => {
+          const on = Boolean(done[idOf(st.text)]);
+          return (
+            <li key={st.n}>
+              <button type="button" role="checkbox" aria-checked={on} className={`todo-row${on ? " on" : ""}`} onClick={() => toggle(st.text)}>
+                <span className="todo-box">{on && Icon.check()}</span>
+                <span className="todo-text">{st.text}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
 function ActionCard({ item, ctx, compact = false }: { item: Item; ctx: Ctx; compact?: boolean }) {
   const a = item.action!;
+  const { key: keySteps, other: otherSteps } = splitSteps(a.steps);
   return (
     <article className={`card${a.priority === "important" ? " danger" : ""} fade-in`}>
       <div className="card-top">
@@ -45,15 +86,18 @@ function ActionCard({ item, ctx, compact = false }: { item: Item; ctx: Ctx; comp
         </div>
         <PageRef page={item.page} pdfUrl={ctx.pdfUrl} />
       </div>
+      {keySteps.length > 0 && <Checklist scope={a.deadlineDate ?? item.title ?? item.id} steps={keySteps} />}
       <details>
         <summary className="btn ghost sm" style={{ marginTop: 8 }}>Details {Icon.chev()}</summary>
         <div className="body">
           {(a.from || a.received) && <p className="sub" style={{ marginTop: 0 }}>{a.from && <>From {a.from}</>}{a.from && a.received && " · "}{a.received && <>received {a.received}</>}</p>}
           <FieldList fields={item.fields} skip={["From", "Cc", "Steps", "Open mail", "Earlier cop", "Reference"]} />
-          {a.steps.length > 0 && (
+          {(keySteps.length > 0 ? otherSteps : a.steps.map((text, i) => ({ n: i + 1, text }))).length > 0 && (
             <>
-              <p className="eyebrow" style={{ marginTop: 10 }}>Steps</p>
-              <ol className="steps">{a.steps.map((s, i) => <li key={i}>{s}</li>)}</ol>
+              <p className="eyebrow" style={{ marginTop: 10 }}>{keySteps.length > 0 ? "Good to know" : "Steps"}</p>
+              <ol className="steps">
+                {(keySteps.length > 0 ? otherSteps : a.steps.map((text, i) => ({ n: i + 1, text }))).map((st) => <li key={st.n} value={st.n}>{st.text}</li>)}
+              </ol>
             </>
           )}
         </div>
