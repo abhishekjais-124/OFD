@@ -3,6 +3,7 @@ import type { Briefing, Item, Section } from "@shared/schema";
 import { formatDateTimeIST, formatLongDateIST, greetingIST, nameFromGreetingTitle } from "@shared/ist";
 import { Segmented } from "../components/nav.tsx";
 import { AlertList, UpdateRow } from "../components/mail.tsx";
+import { JobView, QuestionView } from "../components/learn.tsx";
 import { LeadStory, StoryRow } from "../components/news.tsx";
 import { mixStories } from "@shared/news";
 import { ItemView, NotesPanel } from "../components/sections.tsx";
@@ -199,20 +200,21 @@ export function NewsPage(p: PageProps) {
 /* ---------------- Learn ---------------- */
 export function LearnPage(p: PageProps) {
   const ctx = ctxOf(p);
-  const q = allItems(sectionsOf(p.briefing, "question"));
+  const q = allItems(sectionsOf(p.briefing, "question")).find((i) => i.kind === "question" && i.question);
   const jobs = allItems(sectionsOf(p.briefing, "job"));
+  const hasJob = jobs.some((i) => i.kind === "job" && i.job);
   const tabs = [
-    ...(q.length ? [{ id: "question", label: "Question" }] : []),
-    ...(jobs.length ? [{ id: "job", label: "Job" }] : []),
+    ...(q ? [{ id: "question", label: "Question" }] : []),
+    ...(hasJob ? [{ id: "job", label: "Job" }] : []),
   ];
   const [tab, setTab] = useState(tabs[0]?.id ?? "question");
   if (!tabs.length) return <Empty text="No question or job in this briefing." />;
-  const shown = tab === "job" && jobs.length ? jobs : q.length ? q : jobs;
-  const title = shown === jobs ? "Job of the day" : "Question of the day";
+  const active = tabs.some((t) => t.id === tab) ? tab : tabs[0]!.id;
   return (
     <>
-      <Segmented value={tab} onChange={setTab} options={tabs} />
-      <Group title={title}>{shown.map((i) => <ItemView key={i.id} item={i} ctx={ctx} />)}</Group>
+      <Segmented value={active} onChange={setTab} options={tabs} />
+      {active === "question" && q && <QuestionView item={q} ctx={ctx} />}
+      {active === "job" && <JobView items={jobs} ctx={ctx} />}
     </>
   );
 }
