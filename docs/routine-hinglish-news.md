@@ -18,6 +18,18 @@ The stored routine prompt does not mention a PDF, images, RSS feeds or Drive, an
 around the time today's PDF was written, so the PDF is built somewhere else. Paste the block below into that
 generator's news step.
 
+## Calendar interviews
+
+STEP 2 of the routine now finds interviews (events mentioning interview, hiring loop, panel round or candidate, or
+organised by Greenhouse, Lever, Ashby or Workable) and prints the calendar part in one labelled line:
+
+```
+Meetings: <list or none>. Interviews: <list or none>. On call: <time range or none>. RSVP needed: <list or none>.
+```
+
+OFD reads that line (`shared/calendar.ts`) and shows an Interviews row on the calendar card. Until the PDF generator
+prints an `Interviews:` label the row says "Not in this briefing" instead of claiming there are none.
+
 ## Block to paste
 
 ```
