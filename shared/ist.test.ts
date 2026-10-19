@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   addDaysIST, countdownIST, endOfDayIST, formatDateTimeIST, formatLongDateIST,
-  isIsoDate, parseHumanDate, startOfDayIST, todayIST, toIsoDateIST,
+  isIsoDate, parseHumanDate, startOfDayIST, todayIST, toIsoDateIST, weekDates, weekdayParts,
 } from "./ist.ts";
 
 describe("todayIST", () => {
@@ -124,5 +124,16 @@ describe("timeAgo", () => {
   });
   it("treats future times as just now", () => {
     expect(ago("2026-10-19T13:00:00Z")).toBe("just now");
+  });
+});
+
+describe("weekDates", () => {
+  it("gives Monday to Sunday around a date", () => {
+    expect(weekDates("2026-10-20")).toEqual(["2026-10-19", "2026-10-20", "2026-10-21", "2026-10-22", "2026-10-23", "2026-10-24", "2026-10-25"]);
+    expect(weekDates("2026-10-25")[0]).toBe("2026-10-19");
+    expect(weekDates("2026-10-19")[6]).toBe("2026-10-25");
+  });
+  it("names the weekday", () => {
+    expect(weekdayParts("2026-10-19")).toEqual({ weekday: "Mon", day: 19 });
   });
 });

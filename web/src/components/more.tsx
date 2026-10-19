@@ -1,6 +1,6 @@
 import { useRef, useState, type DragEvent, type ReactNode } from "react";
 import type { Briefing, Item } from "@shared/schema";
-import { dayLabel, formatDateTimeIST, formatLongDateIST } from "@shared/ist";
+import { dayLabel, formatDateTimeIST, formatLongDateIST, timeAgo, weekDates, weekdayParts } from "@shared/ist";
 import { formatBytes, parseRoutineDetails, sourcesSummary } from "@shared/more";
 import { Icon, LinkChips } from "./ui.tsx";
 
@@ -49,8 +49,8 @@ export function FoldRow({ icon, title, sub, children }: { icon: ReactNode; title
 }
 
 /** The date, where it came from and the two things you do to it: check Drive again, or read the PDF again. */
-export function BriefingHeader({ briefing, cached, busy, canRefresh, onRefresh, onReprocess }: {
-  briefing: Briefing; cached: boolean; busy: "refresh" | "reprocess" | "upload" | null; canRefresh: boolean; onRefresh: () => void; onReprocess: () => void;
+export function BriefingHeader({ briefing, cached, now, busy, canRefresh, onRefresh, onReprocess }: {
+  briefing: Briefing; cached: boolean; now: Date; busy: "refresh" | "reprocess" | "upload" | null; canRefresh: boolean; onRefresh: () => void; onReprocess: () => void;
 }) {
   const b = briefing;
   const status = b.confidence === "high" ? "All pages read cleanly" : b.confidence === "low" ? "Read with OCR, lower confidence" : "Some pages could not be read";
@@ -59,7 +59,7 @@ export function BriefingHeader({ briefing, cached, busy, canRefresh, onRefresh, 
       <h2 className="mhead-date">{b.date ? formatLongDateIST(b.date) : "Date unknown"}</h2>
       <p className="mhead-file">{b.source.fileName}</p>
       <p className="mhead-status"><span className={`sdot ${b.confidence}`} />{status}</p>
-      <p className="mhead-when">Processed {formatDateTimeIST(new Date(b.processedAt)).replace(/^\d+ \w+ \d{4}, /, "")}{cached ? " · from cache" : ""}</p>
+      <p className="mhead-when" title={formatDateTimeIST(new Date(b.processedAt))}>Processed {timeAgo(new Date(b.processedAt), now)}{cached ? " · from cache" : ""}</p>
       <div className="mhead-actions">
         {canRefresh && (
           <button className="qa" type="button" onClick={onRefresh} disabled={busy !== null}>
@@ -74,12 +74,25 @@ export function BriefingHeader({ briefing, cached, busy, canRefresh, onRefresh, 
   );
 }
 
-/** Other days as pills. */
+/** The current Monday-to-Sunday week as pills: days with a saved briefing are tappable, the rest are dimmed. */
 export function DayPills({ dates, today, current, onPick }: { dates: string[]; today: string; current: string | null; onPick: (d: string) => void }) {
-  if (dates.length === 0) return null;
+  if (!today) return null;
+  const have = new Set(dates);
+  // days of other weeks that have a file (old briefings) stay reachable after the week
+  const older = dates.filter((d) => !weekDates(today).includes(d) && d < today);
   return (
-    <div className="daypills" role="list">
-      {dates.map((d) => (
+    <div className="daypills week" role="list">
+      {weekDates(today).map((d) => {
+        const { weekday, day } = weekdayParts(d);
+        const ready = have.has(d);
+        return (
+          <button key={d} role="listitem" type="button" disabled={!ready} aria-label={dayLabel(d, today)} aria-current={d === today ? "date" : undefined} className={`daypill${d === current ? " on" : ""}${d === today ? " today" : ""}`} onClick={() => onPick(d)}>
+            <span className="dp-w">{weekday}</span>
+            <span className="dp-d">{day}</span>
+          </button>
+        );
+      })}
+      {older.map((d) => (
         <button key={d} role="listitem" type="button" className={`btn sm${d === current ? " on" : ""}`} onClick={() => onPick(d)}>{dayLabel(d, today)}</button>
       ))}
     </div>

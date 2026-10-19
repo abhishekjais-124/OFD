@@ -1,11 +1,11 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { actionKey, useDone } from "../done.ts";
 import { MentionRow } from "./mentions.tsx";
 import type { Briefing, Item, Section } from "@shared/schema";
 import { splitSteps, topSteps } from "@shared/actions";
 import { parseCalendarStatus } from "@shared/calendar";
-import { countdownIST, formatDateTimeIST, formatShortDateIST } from "@shared/ist";
-import { Chip, CopyButton, DataTable, FieldList, Flags, Icon, LinkChips, LinkList, PageRef } from "./ui.tsx";
+import { countdownIST, formatDateTimeIST, formatShortDateIST, todayIST } from "@shared/ist";
+import { Chip, CopyButton, DataTable, FieldList, Flags, Icon, LinkChips, LinkList } from "./ui.tsx";
 
 interface Ctx {
   pdfUrl: string;
@@ -30,7 +30,9 @@ export function ActionSummary({ briefing, now }: { briefing: Briefing; now: Date
 function Countdown({ date, now, text }: { date: string | null; now: Date; text?: string }) {
   if (!date) return text ? <Chip tone="warn">{text}</Chip> : null;
   const c = countdownIST(date, now);
-  return <span className={`countdown ${c.state}`} title={text}>{c.label} · {formatShortDateIST(date)}{/eod/i.test(text ?? "") ? " EOD" : ""}</span>;
+  // the year only matters when it is not this year
+  const short = formatShortDateIST(date).replace(` ${todayIST().slice(0, 4)}`, "");
+  return <span className={`countdown ${c.state}`} title={text}>{c.label} · {short}{/eod/i.test(text ?? "") ? " EOD" : ""}</span>;
 }
 
 /** The key steps as a plain list: what to do, in order. */
@@ -50,7 +52,36 @@ function TodoList({ steps, hidden = 0 }: { steps: { n: number; text: string }[];
   );
 }
 
+/** Home version: one tight row (check, title, deadline); the steps unfold on tap. */
+function CompactAction({ item, ctx }: { item: Item; ctx: Ctx }) {
+  const a = item.action!;
+  const { key: keySteps } = splitSteps(a.steps);
+  const steps = keySteps.length ? keySteps : a.steps.map((text, i) => ({ n: i + 1, text }));
+  const [done, toggleDone] = useDone(actionKey(item));
+  return (
+    <article className={`card ca${a.priority === "important" && !done ? " danger" : ""}${done ? " is-done" : ""} fade-in`}>
+      <div className="ca-row">
+        <button className={`ca-check${done ? " on" : ""}`} type="button" aria-pressed={done} aria-label={done ? "Mark as not done" : "Mark as done"} onClick={toggleDone}>{Icon.check()}</button>
+        <div className="ca-main">
+          <h3>{item.title}</h3>
+          <div className="ca-meta">
+            {done ? <span className="countdown done">Done</span> : <Countdown date={a.deadlineDate} now={ctx.now} text={a.deadlineText} />}
+          </div>
+        </div>
+      </div>
+      {steps.length > 0 && (
+        <details className="ca-steps">
+          <summary>{steps.length} step{steps.length === 1 ? "" : "s"} {Icon.chev()}</summary>
+          <ol>{steps.map((st) => <li key={st.n}>{st.text}</li>)}</ol>
+          <button className="btn quiet sm" type="button" onClick={() => goTab("mail")}>{Icon.mail()} Open in Mail{item.links.length ? ` · ${item.links.length} link${item.links.length === 1 ? "" : "s"}` : ""}</button>
+        </details>
+      )}
+    </article>
+  );
+}
+
 function ActionCard({ item, ctx, compact = false }: { item: Item; ctx: Ctx; compact?: boolean }) {
+  if (compact) return <CompactAction item={item} ctx={ctx} />;
   const a = item.action!;
   const { key: keySteps, other: otherSteps } = splitSteps(a.steps);
   const [done, toggleDone] = useDone(actionKey(item));
@@ -66,11 +97,10 @@ function ActionCard({ item, ctx, compact = false }: { item: Item; ctx: Ctx; comp
           </div>
           <h3>{item.title}</h3>
         </div>
-        <PageRef page={item.page} pdfUrl={ctx.pdfUrl} />
       </div>
       {keySteps.length > 0 && (compact ? <TodoList steps={shown.shown} hidden={shown.hidden} /> : <TodoList steps={keySteps} />)}
-      <details>
-        <summary className="btn ghost sm" style={{ marginTop: 8 }}>Details {Icon.chev()}</summary>
+      <details className="card-fold">
+        <summary className="card-fold-sum">Details {Icon.chev()}</summary>
         <div className="body">
           {(a.from || a.received) && <p className="sub" style={{ marginTop: 0 }}>{a.from && <>From {a.from}</>}{a.from && a.received && " · "}{a.received && <>received {a.received}</>}</p>}
           <FieldList fields={item.fields} skip={["From", "Cc", "Steps", "Open mail", "Earlier cop", "Reference"]} />
@@ -98,50 +128,28 @@ function ActionCard({ item, ctx, compact = false }: { item: Item; ctx: Ctx; comp
 /* ---------- calendar ---------- */
 function CalendarCard({ item, ctx }: { item: Item; ctx: Ctx }) {
   const st = parseCalendarStatus(item.lines);
+  const [sel, setSel] = useState<string | null>(null);
   if (!st.recognized) return <GenericCard item={item} ctx={ctx} />;
-  const rows: { label: string; value: string | null; icon: () => ReactNode; unreported?: boolean }[] = [
+  const tiles = [
     { label: "Meetings", value: st.meetings, icon: Icon.calendar },
-    { label: "Interviews", value: st.interviews, icon: Icon.briefcase, unreported: !st.interviewsReported },
+    { label: "Interviews", value: st.interviews, icon: Icon.briefcase },
     { label: "On call", value: st.onCall, icon: Icon.pin },
-    { label: "RSVP needed", value: st.rsvp, icon: Icon.mail },
   ];
-  const busy = rows.filter((r) => r.value).length;
   const link = item.links.find((l) => /calendar/i.test(l.label ?? "") || /calendar/i.test(l.url)) ?? item.links[0];
+  const open = tiles.find((t) => t.label === sel && t.value);
+  // three small tiles in one row; a tile with something in it grows a little and opens its full text on tap
   return (
-    <article className="card cal fade-in">
-      <div className="card-top">
-        <div className="grow">
-          <div className={`cal-hero${busy ? " busy" : ""}`}>
-            <span className="cal-badge">{busy ? Icon.calendar() : Icon.check()}</span>
-            <div>
-              <h3>{busy ? `${busy} thing${busy === 1 ? "" : "s"} on your plate` : "All clear"}</h3>
-              <p className="sub" style={{ marginTop: 2 }}>{busy ? "Check the details below." : "No meetings, not on call, no invites to answer."}</p>
-            </div>
-          </div>
-        </div>
-        <PageRef page={item.page} pdfUrl={ctx.pdfUrl} />
-      </div>
-      <ul className="cal-rows">
-        {rows.map((r) => (
-          <li key={r.label} className={`${r.value ? "on" : ""}${r.unreported ? " unreported" : ""}`}>
-            <span className="cal-ico">{r.icon()}</span>
-            <span className="cal-label">{r.label}</span>
-            <span className="cal-value">{r.unreported ? "Not in this briefing" : r.value ?? "None"}</span>
-          </li>
+    <article className="cal fade-in">
+      <div className="cal-tiles">
+        {tiles.map((t) => (
+          <button key={t.label} type="button" className={`cal-tile${t.value ? " on" : ""}${sel === t.label ? " sel" : ""}`} disabled={!t.value} aria-expanded={sel === t.label} onClick={() => setSel(sel === t.label ? null : t.label)}>
+            <span className="cal-tile-top">{t.icon()}<span>{t.label}</span></span>
+            <span className="cal-tile-val">{t.value ?? "None"}</span>
+          </button>
         ))}
-      </ul>
-      {(st.checked || link) && (
-        <div className="cal-foot">
-          {link && <a className="btn quiet" href={link.url} target="_blank" rel="noreferrer">{Icon.open()} Open calendar</a>}
-          {link && <CopyButton url={link.url} label="Copy calendar link" />}
-        </div>
-      )}
-      {st.checked && (
-        <details className="cal-checked">
-          <summary className="btn ghost sm">What was checked {Icon.chev()}</summary>
-          <p className="body">{st.checked}</p>
-        </details>
-      )}
+      </div>
+      {link && <a className="cal-open-top" href={link.url} target="_blank" rel="noreferrer" aria-label="Open calendar" title="Open calendar">{Icon.open()}</a>}
+      {open && <div className="cal-more"><p>{open.value}</p></div>}
     </article>
   );
 }
@@ -163,7 +171,6 @@ function GenericCard({ item, ctx, title }: { item: Item; ctx: Ctx; title?: strin
           {heading && <h3>{heading}</h3>}
           <Flags flags={item.flags} />
         </div>
-        <PageRef page={item.page} pdfUrl={ctx.pdfUrl} />
       </div>
       {item.images.map((im) => <img key={im.id} src={im.url} alt="" width={im.width} height={im.height} style={{ marginTop: 10, borderRadius: 10, maxHeight: 320, width: "auto" }} loading="lazy" />)}
       {bodyLines.length > 0 && <div className="body"><p>{bodyLines.join(" ")}</p></div>}
@@ -226,7 +233,6 @@ function HeadlineCard({ item, ctx }: { item: Item; ctx: Ctx }) {
       <div style={{ minWidth: 0 }}>
         <div className="card-top">
           <div className="grow"><h3>{h.url ? <a href={h.url} target="_blank" rel="noreferrer" style={{ color: "inherit", textDecoration: "none" }}>{h.title}</a> : h.title}</h3></div>
-          <PageRef page={item.page} pdfUrl={ctx.pdfUrl} />
         </div>
         {h.summary && <p className="sum">{h.summary}</p>}
         <p className="when">{when}{h.source ? ` · ${h.source}` : ""} <Flags flags={item.flags} /></p>
@@ -253,7 +259,6 @@ function QuestionCard({ item, ctx }: { item: Item; ctx: Ctx }) {
           </div>
           <h3>{q.title}</h3>
         </div>
-        <PageRef page={item.page} pdfUrl={ctx.pdfUrl} />
         {Icon.chev()}
       </summary>
       <div className="body">
@@ -286,7 +291,6 @@ function JobCard({ item, ctx }: { item: Item; ctx: Ctx }) {
           <h3>{j.title}</h3>
           <p className="sub">{[j.location, j.postedText].filter(Boolean).join(" · ")}</p>
         </div>
-        <PageRef page={item.page} pdfUrl={ctx.pdfUrl} />
       </div>
       {j.applyUrl && <div className="actions-row" style={{ marginTop: 12 }}><a className="btn primary" href={j.applyUrl} target="_blank" rel="noreferrer">{Icon.open()} Apply / details</a></div>}
       <FieldList fields={j.fields} />
@@ -300,7 +304,7 @@ function JobsTable({ item, ctx }: { item: Item; ctx: Ctx }) {
   if (!table) return <GenericCard item={item} ctx={ctx} />;
   return (
     <article className="card fade-in">
-      <div className="card-top"><div className="grow"><h3>{table.caption ?? item.title ?? "Other roles"}</h3><Flags flags={item.flags} /></div><PageRef page={item.page} pdfUrl={ctx.pdfUrl} /></div>
+      <div className="card-top"><div className="grow"><h3>{table.caption ?? item.title ?? "Other roles"}</h3><Flags flags={item.flags} /></div></div>
       <DataTable table={table} />
     </article>
   );
@@ -330,7 +334,7 @@ export function SectionView({ section, ctx, hideActions }: { section: Section; c
       <div className="section-head">
         <h2>{section.title}</h2>
         <span className="count">{items.length}</span>
-        <span style={{ marginLeft: "auto" }}><PageRef page={section.page} pdfUrl={ctx.pdfUrl} /></span>
+        <span style={{ marginLeft: "auto" }}></span>
       </div>
       <div className="stack">
         {items.map((it) => <ItemView key={it.id} item={it} ctx={ctx} />)}
@@ -354,7 +358,7 @@ export function NotesPanel({ briefing }: { briefing: Briefing }) {
         {briefing.notes.length === 0 ? <p className="small" style={{ marginTop: 8 }}>Nothing to report.</p> : (
           <ul>
             {briefing.notes.map((n, i) => (
-              <li key={i}><span className={`lvl ${n.level}`} /><span>{n.message}{n.page ? <> <PageRef page={n.page} pdfUrl={briefing.pdfUrl} /></> : null}</span></li>
+              <li key={i}><span className={`lvl ${n.level}`} /><span>{n.message}{n.page ? <></> : null}</span></li>
             ))}
           </ul>
         )}

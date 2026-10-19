@@ -1,5 +1,5 @@
 import { BASE } from "./base.ts";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useId, useRef, useState } from "react";
 import type { Sky, WeatherResponse } from "@shared/schema";
 
 export type WeatherState =
@@ -126,29 +126,108 @@ export function WeatherIcon({ sky, isDay }: { sky: Sky; isDay: boolean }) {
 
 const seeded = (i: number, mod: number, mul: number) => ((i * mul) % mod) / mod;
 
-/** Animated sky behind the hero: sun or moon, stars, clouds, rain, snow, fog, lightning. */
-export function SkyScene({ sky, isDay }: { sky: Sky; isDay: boolean }) {
-  const clouds = sky === "clear" ? 0 : sky === "partly" ? 2 : 3;
-  const drops = sky === "rain" || sky === "thunder" ? 36 : sky === "drizzle" ? 22 : 0;
-  const flakes = sky === "snow" ? 28 : 0;
-  const stars = !isDay && (sky === "clear" || sky === "partly") ? 34 : 0;
+type CloudLook = { light: string; ambient: string; gain: number; cut: number };
+
+/** How dense and what colour the clouds are for a sky; "cut" moves the noise threshold (higher = more cover). */
+function cloudLook(sky: Sky, isDay: boolean): CloudLook | null {
+  const day = isDay;
+  switch (sky) {
+    case "partly": return day ? { light: "#ffffff", ambient: "#b9c7dc", gain: 5, cut: 2.75 } : { light: "#9aa6c8", ambient: "#232c50", gain: 5, cut: 2.75 };
+    case "cloudy": return day ? { light: "#eef0f4", ambient: "#7f8898", gain: 4, cut: 1.55 } : { light: "#7a8399", ambient: "#20263a", gain: 4, cut: 1.55 };
+    case "drizzle":
+    case "rain": return day ? { light: "#c2cad6", ambient: "#4d5a70", gain: 4, cut: 1.35 } : { light: "#66718a", ambient: "#151c2b", gain: 4, cut: 1.35 };
+    case "thunder": return { light: "#a197c6", ambient: "#22193d", gain: 4, cut: 1.3 };
+    case "snow": return day ? { light: "#f4f6f9", ambient: "#a2acbb", gain: 4, cut: 1.5 } : { light: "#98a2b6", ambient: "#333e52", gain: 4, cut: 1.5 };
+    default: return null;
+  }
+}
+
+/**
+ * A sheet of clouds from fractal noise: the noise becomes cloud density, a light from above shades it
+ * (bright tops, darker bases) and an ambient tint fills the shadows. It is drawn once; only the layer slides.
+ */
+function CloudLayer({ look, depth, seed }: { look: CloudLook; depth: "far" | "near"; seed: number }) {
+  const id = useId().replace(/:/g, "");
+  const far = depth === "far";
+  // horizontally stretched noise reads as cloud banks; the far layer is finer and fainter
+  const freq = far ? "0.011 0.034" : "0.0065 0.02";
   return (
-    <div className="sky-scene" aria-hidden="true">
-      {(sky === "clear" || sky === "partly") && <span className={isDay ? "sun" : "moon"} />}
-      {Array.from({ length: stars }, (_, i) => (
-        <span key={`s${i}`} className="star" style={{ left: `${seeded(i, 97, 53) * 100}%`, top: `${seeded(i, 61, 29) * 70}%`, animationDelay: `${seeded(i, 11, 3) * 4}s`, opacity: 0.35 + seeded(i, 7, 5) * 0.65 }} />
-      ))}
-      {Array.from({ length: clouds }, (_, i) => (
-        <span key={`c${i}`} className="cloud" style={{ top: `${6 + i * 22}%`, animationDuration: `${46 + i * 17}s`, animationDelay: `${-i * 19}s`, scale: `${1 + i * 0.25}` }} />
-      ))}
-      {sky === "fog" && [0, 1, 2].map((i) => <span key={`f${i}`} className="fogband" style={{ top: `${15 + i * 28}%`, animationDuration: `${30 + i * 11}s`, animationDelay: `${-i * 8}s` }} />)}
-      {Array.from({ length: drops }, (_, i) => (
-        <span key={`d${i}`} className={`raindrop${sky === "drizzle" ? " fine" : ""}`} style={{ left: `${seeded(i, 101, 47) * 100}%`, animationDelay: `${-seeded(i, 13, 7) * 1.2}s`, animationDuration: `${(sky === "drizzle" ? 1.5 : 0.8) + seeded(i, 5, 3) * 0.35}s` }} />
-      ))}
-      {Array.from({ length: flakes }, (_, i) => (
-        <span key={`n${i}`} className="flake" style={{ left: `${seeded(i, 103, 41) * 100}%`, animationDelay: `${-seeded(i, 17, 5) * 9}s`, animationDuration: `${6 + seeded(i, 7, 3) * 5}s`, width: `${3 + seeded(i, 5, 2) * 4}px`, height: `${3 + seeded(i, 5, 2) * 4}px` }} />
-      ))}
-      {sky === "thunder" && <span className="flash" />}
-    </div>
+    <span className={`cloudlayer ${depth}`}>
+      <svg width="100%" height="100%" preserveAspectRatio="none">
+        <filter id={id} x="0" y="0" width="100%" height="100%" colorInterpolationFilters="sRGB">
+          <feTurbulence type="fractalNoise" baseFrequency={freq} numOctaves={4} seed={seed} result="noise" />
+          <feColorMatrix in="noise" type="matrix" values={`0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  ${look.gain} 0 0 0 -${look.cut}`} result="density" />
+          <feGaussianBlur in="density" stdDeviation={far ? 4 : 2.6} result="soft" />
+          <feDiffuseLighting in="soft" surfaceScale={far ? 1.4 : 2.4} diffuseConstant={1} lightingColor={look.light} result="lit">
+            <feDistantLight azimuth={270} elevation={far ? 62 : 52} />
+          </feDiffuseLighting>
+          <feFlood floodColor={look.ambient} result="amb" />
+          <feComposite in="lit" in2="amb" operator="arithmetic" k1={0} k2={0.7} k3={0.5} k4={0} result="shaded" />
+          <feComposite in="shaded" in2="soft" operator="in" />
+        </filter>
+        <rect width="100%" height="100%" filter={`url(#${id})`} />
+      </svg>
+    </span>
   );
 }
+
+/** Animated sky behind the hero: layered gradients, sun or moon, stars, noise-based clouds in two depths, rain, snow, fog, lightning. */
+export const SkyScene = memo(function SkyScene({ sky, isDay }: { sky: Sky; isDay: boolean }) {
+  const look = cloudLook(sky, isDay);
+  const drops = sky === "rain" || sky === "thunder" ? 44 : sky === "drizzle" ? 26 : 0;
+  const flakes = sky === "snow" ? 30 : 0;
+  const stars = !isDay && (sky === "clear" || sky === "partly") ? 42 : 0;
+  return (
+    <div className="sky-scene" aria-hidden="true">
+      {isDay && (sky === "clear" || sky === "partly") && <span className="sun"><i /></span>}
+      {!isDay && (sky === "clear" || sky === "partly") && <span className="moon" />}
+      {Array.from({ length: stars }, (_, i) => {
+        const big = i % 9 === 0;
+        return (
+          <span
+            key={`s${i}`}
+            className={`star${big ? " big" : ""}`}
+            style={{ left: `${seeded(i, 97, 53) * 100}%`, top: `${seeded(i, 61, 29) * 62}%`, animationDelay: `${seeded(i, 11, 3) * 5}s`, animationDuration: `${2.6 + seeded(i, 7, 5) * 3}s`, opacity: 0.3 + seeded(i, 7, 5) * 0.7 }}
+          />
+        );
+      })}
+      {look && (
+        <>
+          <CloudLayer look={look} depth="far" seed={23} />
+          <CloudLayer look={look} depth="near" seed={7} />
+        </>
+      )}
+      {sky === "fog" && (
+        <>
+          <span className="haze" />
+          {[0, 1, 2, 3].map((i) => <span key={`f${i}`} className="fogband" style={{ top: `${8 + i * 24}%`, animationDuration: `${34 + i * 9}s`, animationDelay: `${-i * 7}s`, opacity: 0.5 + (i % 2) * 0.25 }} />)}
+        </>
+      )}
+      {Array.from({ length: drops }, (_, i) => (
+        <span
+          key={`d${i}`}
+          className={`raindrop${sky === "drizzle" ? " fine" : ""}`}
+          style={{ left: `${seeded(i, 101, 47) * 100}%`, height: `${(sky === "drizzle" ? 10 : 18) + seeded(i, 9, 4) * 14}px`, opacity: 0.35 + seeded(i, 7, 3) * 0.5, animationDelay: `${-seeded(i, 13, 7) * 1.2}s`, animationDuration: `${(sky === "drizzle" ? 1.4 : 0.7) + seeded(i, 5, 3) * 0.4}s` }}
+        />
+      ))}
+      {drops > 0 && <span className="mist" />}
+      {Array.from({ length: flakes }, (_, i) => {
+        const size = 2.5 + seeded(i, 5, 2) * 4;
+        return (
+          <span
+            key={`n${i}`}
+            className="flake"
+            style={{ left: `${seeded(i, 103, 41) * 100}%`, width: size, height: size, opacity: 0.45 + seeded(i, 7, 3) * 0.55, animationDelay: `${-seeded(i, 17, 5) * 9}s`, animationDuration: `${7 + seeded(i, 7, 3) * 6}s` }}
+          />
+        );
+      })}
+      {sky === "thunder" && (
+        <>
+          <span className="flash" />
+          <svg className="bolt" viewBox="0 0 40 100" preserveAspectRatio="none"><path d="M22 0 L12 44 L21 44 L10 100 L30 38 L20 38 Z" /></svg>
+        </>
+      )}
+      <span className="scrim" />
+    </div>
+  );
+});

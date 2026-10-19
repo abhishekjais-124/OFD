@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Briefing, BriefingResponse } from "@shared/schema";
-import { formatDateTimeIST } from "@shared/ist";
+import { formatDateTimeIST, todayIST } from "@shared/ist";
 import { api, type ApiResult } from "./api.ts";
 import { AppBar, RefreshButton, TabBar, type RefreshState, type Tab } from "./components/nav.tsx";
 import { ErrorState, MissingState, OfflineBanner, Skeleton } from "./components/states.tsx";
@@ -39,12 +39,38 @@ export function App() {
   );
 }
 
+const LAST_KEY = "ofd.last";
+
+/** The last briefing for today, kept on this device so the app paints content at once while it revalidates. */
+function readLast(): Loaded | null {
+  try {
+    const raw = localStorage.getItem(LAST_KEY);
+    if (!raw) return null;
+    const response = JSON.parse(raw) as BriefingResponse;
+    // never show another day's briefing as today's
+    if (response.status !== "ok" || !response.briefing || response.briefing.date !== todayIST()) return null;
+    return { response, fromCache: false, cachedAt: null };
+  } catch {
+    return null;
+  }
+}
+
+function saveLast(response: BriefingResponse): void {
+  try {
+    if (response.status === "ok") localStorage.setItem(LAST_KEY, JSON.stringify(response));
+  } catch {
+    /* storage is optional */
+  }
+}
+
 function Shell() {
   const toast = useToast();
+  // opening or reloading the app always shows today; an old ?date= in the address is dropped
   const initial = parseHash();
   const [route, setRoute] = useState<Route>(initial.route);
-  const [source, setSource] = useState<Source>(initial.date ? { kind: "date", date: initial.date } : { kind: "today" });
-  const [loaded, setLoaded] = useState<Loaded | null>(null);
+  const [source, setSource] = useState<Source>({ kind: "today" });
+  const [loaded, setLoaded] = useState<Loaded | null>(() => readLast());
+  useEffect(() => { if (initial.date) history.replaceState(null, "", hashFor(initial.route, { kind: "today" })); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [loading, setLoading] = useState(true);
   const [refreshState, setRefreshState] = useState<RefreshState>("idle");
   const [busy, setBusy] = useState<"refresh" | "reprocess" | "upload" | null>(null);
@@ -62,6 +88,9 @@ function Shell() {
   }, []);
   const sourceRef = useRef(source);
   sourceRef.current = source;
+  const routeRef = useRef(route);
+  routeRef.current = route;
+  const forceRefresh = useRef(false);
   const loadedRef = useRef<Loaded | null>(null);
 
   useEffect(() => {
@@ -85,7 +114,14 @@ function Shell() {
     };
   }, []);
 
-  useEffect(() => { window.scrollTo(0, 0); }, [route]);
+  // each tab keeps its own scroll position, so switching back lands where you left off
+  const scrollByRoute = useRef<Partial<Record<Route, number>>>({});
+  const lastRoute = useRef(route);
+  useLayoutEffect(() => {
+    if (lastRoute.current === route) return;
+    lastRoute.current = route;
+    window.scrollTo(0, scrollByRoute.current[route] ?? 0);
+  }, [route]);
 
   const sky = skyKey(weather.state.status === "ok" ? weather.state.weather : null);
   useEffect(() => {
@@ -95,7 +131,9 @@ function Shell() {
 
   const go = useCallback((r: Route, s?: Source) => {
     const next = s ?? sourceRef.current;
-    if (s) setSource(s);
+    scrollByRoute.current[routeRef.current] = window.scrollY;
+    // opening another day starts every page from the top
+    if (s) { setSource(s); scrollByRoute.current = {}; }
     history.pushState(null, "", hashFor(r, next));
     setRoute(r);
   }, []);
@@ -118,6 +156,7 @@ function Shell() {
       const loadedNow: Loaded = { response: res.data, fromCache: res.fromCache, cachedAt: res.cachedAt };
       loadedRef.current = loadedNow;
       setLoaded(loadedNow);
+      if (s.kind === "today") saveLast(res.data);
       if (opts.refresh) {
         const at = formatDateTimeIST(new Date()).split(", ")[1] ?? "";
         if (res.data.status === "ok") { toast(res.data.cached ? `Up to date · checked ${at}` : "New version loaded from Drive"); flash("ok"); }
@@ -133,7 +172,11 @@ function Shell() {
     }
   }, [toast, flash]);
 
-  useEffect(() => { void load(source); }, [source, load]);
+  useEffect(() => {
+    const refreshIt = forceRefresh.current;
+    forceRefresh.current = false;
+    void load(source, { refresh: refreshIt });
+  }, [source, load]);
 
   loadedRef.current = loaded;
   const response = loaded?.response ?? null;
@@ -166,6 +209,13 @@ function Shell() {
   const refresh = useCallback(() => {
     if (busy !== null || sourceRef.current.kind === "upload") return;
     weather.refresh();
+    if (sourceRef.current.kind === "date") {
+      // refreshing from an older day goes back to today and checks Drive for it
+      forceRefresh.current = true;
+      history.replaceState(null, "", hashFor(routeRef.current, { kind: "today" }));
+      setSource({ kind: "today" });
+      return;
+    }
     void load(sourceRef.current, { refresh: true });
   }, [load, weather, busy]);
 
@@ -230,13 +280,14 @@ function Shell() {
         title={route === "today" ? <span className="wordmark"><span className="dot" aria-hidden="true" />OFD</span> : TITLES[route]}
         left={showBack ? <button className="btn ghost icon" type="button" onClick={() => go("today")} aria-label="Back">{Icon.back()}</button> : undefined}
       >
-        {briefing && route !== "search" && (
+        {briefing && route === "more" && (
           <button className="btn bar-btn" type="button" onClick={() => go("search")} aria-label="Search (press /)" title="Search (/)">{Icon.search()}</button>
         )}
-        {route !== "search" && source.kind !== "upload" && (
+        {route === "more" && source.kind !== "upload" && (
           <RefreshButton state={refreshState} onClick={refresh} disabled={busy !== null} />
         )}
       </AppBar>
+      <div className={`loadbar${(loading && briefing) || busy ? " on" : ""}`} aria-hidden="true"><i /></div>
       {ptr.pull > 0 && (
         <div className={`ptr${ptr.armed ? " armed" : ""}`} style={{ transform: `translate(-50%, ${ptr.pull}px)` }} aria-hidden="true">
           {Icon.refresh(ptr.armed ? "spin" : undefined)}<span>{ptr.armed ? "Release to refresh" : "Pull to refresh"}</span>
@@ -246,7 +297,7 @@ function Shell() {
         {offline && <OfflineBanner processedAt={briefing?.processedAt ?? loaded?.cachedAt ?? null} />}
         <div className="route fade-in">{body}</div>
       </main>
-      <TabBar active={route} onSelect={(t) => go(t)} badges={{ mail: actionCount || undefined }} />
+      <TabBar active={route} onSelect={(t) => (t === route ? window.scrollTo({ top: 0, behavior: "smooth" }) : go(t))} badges={{ mail: actionCount || undefined }} />
     </div>
   );
 }
