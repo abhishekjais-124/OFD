@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { actionKey, useDone } from "../done.ts";
+import { MentionRow } from "./mentions.tsx";
 import type { Briefing, Item, Section } from "@shared/schema";
 import { splitSteps, topSteps } from "@shared/actions";
 import { parseCalendarStatus } from "@shared/calendar";
@@ -310,6 +311,7 @@ export function ItemView({ item, ctx, compact = false }: { item: Item; ctx: Ctx;
     case "action": return <ActionCard item={item} ctx={ctx} compact={compact} />;
     case "glance": return <GlanceItem item={item} ctx={ctx} />;
     case "calendar": return <CalendarCard item={item} ctx={ctx} />;
+    case "mention": return <div className="mlist"><MentionRow item={item} now={ctx.now} pdfUrl={ctx.pdfUrl} /></div>;
     case "headline": return <HeadlineCard item={item} ctx={ctx} />;
     case "question": return <QuestionCard item={item} ctx={ctx} />;
     case "job": return <JobCard item={item} ctx={ctx} />;

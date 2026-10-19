@@ -332,7 +332,7 @@ export function layoutPage(page: ExtractedPage, doc: Omit<PageContext, "leftMarg
     }
     const gap = current ? l.bbox.y - (current.bbox.y + current.bbox.h) : Infinity;
     const atMargin = Math.abs(l.bbox.x - ctx.leftMargin) <= X_TOL;
-    const standaloneBold = l.bold && atMargin && (i + 1 >= lines.length || lines[i + 1]!.bbox.y - (l.bbox.y + l.bbox.h) > 4);
+    const standaloneBold = l.bold && atMargin && (i + 1 >= lines.length || lines[i + 1]!.bbox.y - (l.bbox.y + l.bbox.h) > 8);
     const currentAtMargin = current ? current.lines.every((c) => Math.abs(c.bbox.x - ctx.leftMargin) <= X_TOL) : false;
     const indentChange = current ? atMargin !== currentAtMargin : false;
     if (current && gap <= ITEM_GAP && !standaloneBold && !indentChange && current.type !== "subheading") {

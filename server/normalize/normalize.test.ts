@@ -42,7 +42,7 @@ describe("normalizeBriefing on the synthetic briefing", () => {
     expect(b.dateSource).toBe("filename");
     expect(b.confidence).toBe("high");
     expect(b.sections.map((s) => s.kind)).toEqual([
-      "glance", "mail", "calendar", "headlines", "headlines", "question", "job", "routine", "unknown",
+      "glance", "mail", "calendar", "slack", "headlines", "headlines", "question", "job", "routine", "unknown",
     ]);
     expect(b.sections.map((s) => s.title)).toContain("Reading list");
   });
@@ -82,6 +82,20 @@ describe("normalizeBriefing on the synthetic briefing", () => {
     expect(table.rows[2]![2]!.text).toBe("(ignore)");
     // the subheading was consumed as the caption, not shown twice
     expect(items(b, "note").some((n) => n.title === "Automated alerts (low priority, unread)")).toBe(false);
+  });
+
+  it("turns Slack cards into mentions with sender, place, text, time and link", () => {
+    const mentions = items(b, "mention");
+    expect(mentions).toHaveLength(2);
+    expect(mentions[0]!.mention).toMatchObject({
+      from: "Priya Rao",
+      where: "#payments-dev",
+      text: "@sample can you review the refund retry change before the 4 PM release?",
+      timeText: "Thu, 15 Jan 2026 10:42 IST",
+      timestamp: "2026-01-15T05:12:00.000Z",
+      url: "https://example.slack.com/archives/C0PAY/p1768453920000100",
+    });
+    expect(mentions[1]!.mention).toMatchObject({ from: "Dev Mehta", where: "DM", timestamp: "2026-01-14T12:35:00.000Z" });
   });
 
   it("builds headline cards with image, summary, timestamp and article URL", () => {

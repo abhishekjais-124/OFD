@@ -5,6 +5,7 @@ import { formatBytes } from "@shared/more";
 import { Segmented } from "../components/nav.tsx";
 import { AlertList, UpdateRow } from "../components/mail.tsx";
 import { JobView, QuestionView } from "../components/learn.tsx";
+import { MentionList } from "../components/mentions.tsx";
 import { LeadStory, StoryRow } from "../components/news.tsx";
 import { mixStories } from "@shared/news";
 import { ItemView } from "../components/sections.tsx";
@@ -85,6 +86,8 @@ export function TodayPage(p: PageProps) {
   actions.sort((x, y) => (x.action!.deadlineDate ?? "9999").localeCompare(y.action!.deadlineDate ?? "9999"));
   const glance = allItems(sectionsOf(b, "glance"));
   const calendar = allItems(sectionsOf(b, "calendar"));
+  const slackSection = sectionsOf(b, "slack");
+  const mentions = allItems(slackSection);
   return (
     <>
       <div className="hero fade-in" data-sky={wx?.sky ?? "none"} data-day={wx ? (wx.isDay ? "day" : "night") : "none"}>
@@ -102,9 +105,15 @@ export function TodayPage(p: PageProps) {
       </div>
       {p.notices.filter((n) => n !== NO_NEWER).map((n, i) => <div className="banner info" key={i}>{Icon.warn()}<div className="grow">{n}</div></div>)}
       {actions.length > 0 && <Group title="Needs action" count={actions.length}>{actions.map((it) => <ItemView key={it.id} item={it} ctx={ctx} compact />)}</Group>}
+      {slackSection.length > 0 && (
+        <section className="section">
+          <div className="section-head"><h2>Slack mentions</h2>{mentions.some((i) => i.mention) && <span className="count">{Math.min(3, mentions.filter((i) => i.mention).length)}</span>}</div>
+          <MentionList items={mentions} now={p.now} pdfUrl={b.pdfUrl} max={3} />
+        </section>
+      )}
       {glance.length > 0 && <Group title="At a glance">{glance.map((it) => <ItemView key={it.id} item={it} ctx={ctx} />)}</Group>}
       {calendar.length > 0 && <Group title="Calendar">{calendar.map((it) => <ItemView key={it.id} item={it} ctx={ctx} />)}</Group>}
-      {actions.length + glance.length + calendar.length === 0 && <Empty text="Nothing recognised for the Today page. Open More for every section." />}
+      {actions.length + glance.length + calendar.length + slackSection.length === 0 && <Empty text="Nothing recognised for the Today page. Open More for every section." />}
     </>
   );
 }
