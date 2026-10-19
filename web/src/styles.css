@@ -658,3 +658,6 @@ details[open] > summary .chev { transform: rotate(180deg); }
 .news-note { margin-top: 6px; font-size: 13px; color: var(--text-3); line-height: 1.45; }
 .news-sources .lchips { margin-top: 10px; }
 @media (min-width: 640px) { .lead-media { aspect-ratio: 16 / 9; } .lead-over h3 { font-size: 26px; } }
+
+.tag { display: inline-block; margin-right: 8px; padding: 1px 7px; border-radius: 6px; background: var(--accent-soft); color: var(--accent-text); font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; vertical-align: 1px; }
+.lead-meta .tag { background: rgba(255, 255, 255, 0.18); color: #fff; }

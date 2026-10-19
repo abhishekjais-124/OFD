@@ -4,6 +4,7 @@ import { formatDateTimeIST, formatLongDateIST, greetingIST, nameFromGreetingTitl
 import { Segmented } from "../components/nav.tsx";
 import { AlertList, UpdateRow } from "../components/mail.tsx";
 import { LeadStory, StoryRow } from "../components/news.tsx";
+import { mixStories } from "@shared/news";
 import { ItemView, NotesPanel } from "../components/sections.tsx";
 import { Chip, Icon, LinkChips } from "../components/ui.tsx";
 import { Upload } from "../components/Upload.tsx";
@@ -158,15 +159,19 @@ function shortTitle(t: string): string {
   return t.replace(/\s*\(.*?\)\s*/g, " ").replace(/\s*headlines\s*/i, " ").trim() || t;
 }
 
+/** Most stories shown on the News page: a short, mixed list rather than every headline. */
+const NEWS_MAX = 5;
+
 export function NewsPage(p: PageProps) {
   const ctx = ctxOf(p);
   const sections = sectionsOf(p.briefing, "headlines");
-  const [id, setId] = useState<string>(sections[0]?.id ?? "");
   if (!sections.length) return <Empty text="No headlines section in this briefing." />;
-  const active = sections.find((s) => s.id === id) ?? sections[0]!;
-  const stories = active.items.filter((i) => i.kind === "headline" && i.headline);
-  const other = active.items.filter((i) => !(i.kind === "headline" && i.headline));
-  const [lead, ...rest] = stories;
+  const groups = sections.map((s) => s.items.filter((i) => i.kind === "headline" && i.headline).map((item) => ({ item, time: item.headline!.timestamp ? Date.parse(item.headline!.timestamp) : null })));
+  const picked = mixStories(groups, NEWS_MAX);
+  const [lead, ...rest] = picked;
+  const tags = sections.map((s) => shortTitle(s.title));
+  const other = sections.flatMap((s) => s.items.filter((i) => !(i.kind === "headline" && i.headline)));
+  const total = groups.reduce((n, g) => n + g.length, 0);
   const sourceLinks = other.flatMap((i) => i.links).map((l) => ({ ...l, label: feedLabel(l.url) }));
   const sourceText = other.flatMap((i) => i.lines).join(" ")
     .replace(/https?:\/\/\S+/g, " ")
@@ -176,10 +181,10 @@ export function NewsPage(p: PageProps) {
     .trim();
   return (
     <>
-      <Segmented value={active.id} onChange={setId} options={sections.map((s) => ({ id: s.id, label: `${shortTitle(s.title)} · ${s.items.filter((i) => i.kind === "headline").length}` }))} />
-      {lead && <LeadStory key={`lead-${active.id}`} item={lead} ctx={ctx} />}
-      {rest.length > 0 && <div className="stories">{rest.map((i) => <StoryRow key={i.id} item={i} ctx={ctx} />)}</div>}
-      {stories.length === 0 && <Empty text="No stories in this section." />}
+      <p className="mail-summary">{picked.length} of {total} stories · {tags.join(" & ")}, newest first</p>
+      {lead && <LeadStory key={lead.story.item.id} item={lead.story.item} ctx={ctx} tag={tags[lead.group]} />}
+      {rest.length > 0 && <div className="stories">{rest.map((r) => <StoryRow key={r.story.item.id} item={r.story.item} ctx={ctx} tag={tags[r.group]} />)}</div>}
+      {picked.length === 0 && <Empty text="No stories in this briefing." />}
       {(sourceLinks.length > 0 || sourceText) && (
         <section className="news-sources">
           <p className="news-sources-head">Sources</p>

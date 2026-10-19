@@ -4,6 +4,8 @@ import { Icon, PageRef, copyText, useToast } from "./ui.tsx";
 
 interface Ctx { pdfUrl: string; now: Date }
 
+const line = (parts: (string | undefined)[]) => parts.filter(Boolean).join(" · ");
+
 function meta(item: Item, now: Date): { ago: string; full: string | undefined; source: string | undefined } {
   const h = item.headline!;
   const when = h.timestamp ? new Date(h.timestamp) : null;
@@ -26,7 +28,7 @@ function Actions({ url }: { url: string | null }) {
 }
 
 /** The top story: a wide image with the headline over it, then the summary. */
-export function LeadStory({ item, ctx }: { item: Item; ctx: Ctx }) {
+export function LeadStory({ item, ctx, tag }: { item: Item; ctx: Ctx; tag?: string }) {
   const h = item.headline!;
   const img = item.images[0];
   const m = meta(item, ctx.now);
@@ -36,7 +38,7 @@ export function LeadStory({ item, ctx }: { item: Item; ctx: Ctx }) {
         {img ? <img src={img.url} alt="" loading="eager" /> : <div className="lead-empty">{Icon.news()}</div>}
         <div className="lead-shade" />
         <div className="lead-over">
-          <span className="lead-meta" title={m.full}>{[m.ago, m.source].filter(Boolean).join(" · ")}</span>
+          <span className="lead-meta" title={m.full}>{tag && <b className="tag">{tag}</b>}{line([m.ago, m.source])}</span>
           <h3>{h.title}</h3>
         </div>
         <span className="lead-page"><PageRef page={item.page} pdfUrl={ctx.pdfUrl} /></span>
@@ -50,7 +52,7 @@ export function LeadStory({ item, ctx }: { item: Item; ctx: Ctx }) {
 }
 
 /** One story as a compact row; tap to read the summary and open or copy the article. */
-export function StoryRow({ item, ctx }: { item: Item; ctx: Ctx }) {
+export function StoryRow({ item, ctx, tag }: { item: Item; ctx: Ctx; tag?: string }) {
   const h = item.headline!;
   const img = item.images[0];
   const m = meta(item, ctx.now);
@@ -60,7 +62,7 @@ export function StoryRow({ item, ctx }: { item: Item; ctx: Ctx }) {
         {img ? <img className="story-thumb" src={img.url} alt="" loading="lazy" /> : <span className="story-thumb empty">{Icon.news()}</span>}
         <span className="story-text">
           <span className="story-title">{h.title}</span>
-          <span className="story-meta" title={m.full}>{[m.ago, m.source].filter(Boolean).join(" · ")}</span>
+          <span className="story-meta" title={m.full}>{tag && <b className="tag">{tag}</b>}{line([m.ago, m.source])}</span>
         </span>
         {Icon.chev()}
       </summary>
