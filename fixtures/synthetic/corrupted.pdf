@@ -1,0 +1,76 @@
+%PDF-1.4
+%׃כיב
+1 0 obj
+<</Title (brief.html)
+/Creator (Mozilla/5.0 \(Macintosh; Intel Mac OS X 10_15_7\) AppleWebKit/537.36 \(KHTML, like Gecko\) HeadlessChrome/155.0.0.0 Safari/537.36)
+/Producer (Skia/PDF m155)
+/CreationDate (D:20261019102712+00'00')
+/ModDate (D:20261019102712+00'00')>>
+endobj
+3 0 obj
+<</ca 1
+/BM /Normal>>
+endobj
+4 0 obj
+<</CA 1
+/ca 1
+/LC 0
+/LJ 0
+/LW 1
+/ML 4
+/SA true
+/BM /Normal>>
+endobj
+13 0 obj
+<</Type /Annot
+/Subtype /Link
+/F 4
+/Border [0 0 0]
+/Rect [37.5 263.25 364.5 273.75]
+/A <</Type /Action
+/S /URI
+/URI (https://docs.example.com/spreadsheets/d/EXAMPLE-SHEET-ID/edit?usp=sharing)>>
+/StructParent 1>>
+endobj
+14 0 obj
+<</Type /Annot
+/Subtype /Link
+/F 4
+/Border [0 0 0]
+/Rect [37.5 236.25 441 246.75]
+/A <</Type /Action
+/S /URI
+/URI (https://mail.example.com/mail/?authuser=sample@example.com#all/thread-f:1000000000000000001)>>
+/StructParent 2>>
+endobj
+15 0 obj
+<</Type /Annot
+/Subtype /Link
+/F 4
+/Border [0 0 0]
+/Rect [119.25 222.75 522.75 233.25]
+/A <</Type /Action
+/S /URI
+/URI (https://mail.example.com/mail/?authuser=sample@example.com#all/thread-f:1000000000000000002)>>
+/StructParent 3>>
+endobj
+16 0 obj
+<</Type /Annot
+/Subtype /Link
+/F 4
+/Border [0 0 0]
+/Rect [54.75 156.75 240.75 167.25]
+/A <</Type /Action
+/S /URI
+/URI (https://github.com/example-org/widgets/pull/42)>>
+/StructParent 4>>
+endobj
+17 0 obj
+<</Type /Annot
+/Subtype /Link
+/F 4
+/Border [0 0 0]
+/Rect [80.25 143.25 266.25 153.75]
+/A <</Type /Action
+/S /URI
+/URI (https://github.com/example-org/widgets/
