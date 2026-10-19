@@ -129,7 +129,23 @@ describe("Pipeline", () => {
     const re = await p.reprocess("drive:f1");
     expect(re.status).toBe("ok");
     expect(re.briefing?.processedAt).toBe(now.toISOString());
+    expect(re.briefing?.source.modifiedTime).toBe("2026-01-15T06:00:00Z");
     expect(drive.downloadCalls).toBe(downloads);
+  });
+
+  it("keeps the stored Drive version when a parser change re-runs on the cached file", async () => {
+    const drive = fakeDrive([file("Morning-Briefing-2026-01-15.pdf", null, "f1")]);
+    drive.download = async (f) => { drive.downloadCalls++; return { file: { ...f, modifiedTime: "2026-01-15T03:35:00Z" }, bytes: briefingPdf }; };
+    const store = fileStore(dir);
+    const p = new Pipeline({ drive, folderId: "folder", store, ocr: null, now: clock });
+    await p.today();
+    const entry = store.getEntry("drive:f1")!;
+    store.putResult({ ...entry, parserVersion: "0.0.0-old" }, store.getResult("drive:f1")!);
+    const r = await p.today();
+    expect(r.cached).toBe(false);
+    expect(r.briefing?.source.modifiedTime).toBe("2026-01-15T03:35:00Z");
+    expect(store.getEntry("drive:f1")?.modifiedTime).toBe("2026-01-15T03:35:00Z");
+    expect(drive.downloadCalls).toBe(1);
   });
 
   it("invalidates cached results when the parser version changes", async () => {

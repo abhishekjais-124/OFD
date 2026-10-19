@@ -13,7 +13,7 @@ export { validateBriefing, ValidationError } from "./validate.ts";
 export { layoutDocument } from "./layout.ts";
 
 /** Bump when the parser output changes so cached results are reprocessed. */
-export const PARSER_VERSION = "2026.10.19-1";
+export const PARSER_VERSION = "2026.10.19-3";
 
 export interface NormalizeInput {
   extracted: ExtractedDocument;

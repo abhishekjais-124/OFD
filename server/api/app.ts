@@ -82,8 +82,8 @@ export function createApp(deps: AppDeps): Express {
       res.status(404).end();
       return;
     }
-    res.setHeader("cache-control", "public, max-age=31536000, immutable");
-    res.sendFile(file);
+    // headers only on success: a cached error must never become immutable
+    res.sendFile(file, { dotfiles: "allow", headers: { "cache-control": "public, max-age=31536000, immutable" } });
   });
 
   app.post("/api/upload", express.raw({ type: () => true, limit: "60mb" }), async (req, res) => {
@@ -101,7 +101,8 @@ export function createApp(deps: AppDeps): Express {
     app.get(/^\/(?!api\/).*/, (_req, res) => res.sendFile("index.html", { root: deps.staticDir }));
   }
 
-  app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  app.use((err: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    console.error(`[ofd] ${req.method} ${req.originalUrl} failed:`, err.stack ?? err.message);
     res.status(500).json({ error: { code: "unexpected", message: err.message, retryable: true } });
   });
   return app;

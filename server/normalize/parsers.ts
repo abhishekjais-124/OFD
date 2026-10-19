@@ -42,7 +42,8 @@ function baseItem(ctx: ParseContext, item: LayoutItem, kind: ItemKind, extraFlag
   if (item.ocr) flags.push("ocr", "low_confidence");
   if (item.wrappedUrl) flags.push("wrapped_url");
   const texts = item.lines.map((l) => l.text);
-  const { fields } = parseFields(texts);
+  // a bold first line is the card's title, not a "Label: value" field
+  const { fields } = parseFields(item.lines[0]?.bold ? texts.slice(1) : texts);
   return {
     id: ctx.nextId(kind),
     kind,
