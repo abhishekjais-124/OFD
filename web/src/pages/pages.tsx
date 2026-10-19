@@ -51,8 +51,6 @@ export function TodayPage(p: PageProps) {
         <div className="meta-row">
           {!isToday && p.sourceKind !== "upload" && <Chip tone="warn">Showing {b.date ?? "an undated file"}, today is {p.todayIST}</Chip>}
           {p.sourceKind === "upload" && <Chip tone="accent">{b.source.fileName}</Chip>}
-          <Chip title={b.processedAt}>processed {formatDateTimeIST(new Date(b.processedAt))}</Chip>
-          {p.cached && <Chip tone="quiet">cached</Chip>}
           {b.ocrUsed && <Chip tone="warn">OCR, lower confidence</Chip>}
           {b.confidence === "partial" && <Chip tone="danger">partial extraction</Chip>}
         </div>
@@ -177,7 +175,7 @@ export function MorePage(p: MoreProps) {
           <dl className="fields" style={{ marginTop: 0 }}>
             <dt>Date</dt><dd>{b.date ? formatLongDateIST(b.date) : "unknown"}</dd>
             <dt>File</dt><dd>{b.source.fileName}</dd>
-            <dt>Processed</dt><dd>{formatDateTimeIST(new Date(b.processedAt))}</dd>
+            <dt>Processed</dt><dd>{formatDateTimeIST(new Date(b.processedAt))}{p.cached ? " · cached" : ""}</dd>
             {b.source.modifiedTime && <><dt>Drive version</dt><dd>{formatDateTimeIST(new Date(b.source.modifiedTime))}</dd></>}
             <dt>Pages</dt><dd>{b.pageCount}</dd>
           </dl>

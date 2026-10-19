@@ -439,3 +439,4 @@ table.data tr.hl td { background: var(--accent-soft); }
 .search input { background: var(--surface); border-color: var(--border-strong); border-radius: 16px; }
 .drop { background: var(--surface); border-color: var(--border-strong); }
 .skeleton { background: var(--surface-2); }
+.meta-row:empty { display: none; }
