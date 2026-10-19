@@ -120,6 +120,15 @@ export function LinkRow({ link, truncate = false }: { link: Link; truncate?: boo
   );
 }
 
+export function CopyButton({ url, label }: { url: string; label: string }) {
+  const toast = useToast();
+  return (
+    <button className="btn icon" type="button" aria-label={label} title={label} onClick={async () => toast((await copyText(url)) ? "Copied link" : "Copy failed")}>
+      {Icon.copy()}
+    </button>
+  );
+}
+
 export function hostOf(url: string): string {
   try {
     return new URL(url).hostname.replace(/^www\./, "");

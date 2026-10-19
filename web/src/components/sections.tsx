@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import type { Briefing, Item, Section } from "@shared/schema";
+import { parseCalendarStatus } from "@shared/calendar";
 import { countdownIST, formatDateTimeIST, formatShortDateIST } from "@shared/ist";
-import { Chip, DataTable, FieldList, Flags, Icon, LinkList, PageRef } from "./ui.tsx";
+import { Chip, CopyButton, DataTable, FieldList, Flags, Icon, LinkList, PageRef } from "./ui.tsx";
 
 interface Ctx {
   pdfUrl: string;
@@ -60,6 +61,56 @@ function ActionCard({ item, ctx, compact = false }: { item: Item; ctx: Ctx; comp
       {compact
         ? <div className="actions-row" style={{ marginTop: 10 }}><button className="btn sm" type="button" onClick={() => goTab("mail")}>{Icon.mail()} Open in Mail · {item.links.length} link{item.links.length === 1 ? "" : "s"}</button></div>
         : <LinkList links={item.links} />}
+    </article>
+  );
+}
+
+/* ---------- calendar ---------- */
+function CalendarCard({ item, ctx }: { item: Item; ctx: Ctx }) {
+  const st = parseCalendarStatus(item.lines);
+  if (!st.recognized) return <GenericCard item={item} ctx={ctx} />;
+  const rows: { label: string; value: string | null; icon: () => ReactNode }[] = [
+    { label: "Meetings", value: st.meetings, icon: Icon.calendar },
+    { label: "On call", value: st.onCall, icon: Icon.pin },
+    { label: "RSVP needed", value: st.rsvp, icon: Icon.mail },
+  ];
+  const busy = rows.filter((r) => r.value).length;
+  const link = item.links.find((l) => /calendar/i.test(l.label ?? "") || /calendar/i.test(l.url)) ?? item.links[0];
+  return (
+    <article className="card cal fade-in">
+      <div className="card-top">
+        <div className="grow">
+          <div className={`cal-hero${busy ? " busy" : ""}`}>
+            <span className="cal-badge">{busy ? Icon.calendar() : Icon.check()}</span>
+            <div>
+              <h3>{busy ? `${busy} thing${busy === 1 ? "" : "s"} on your plate` : "All clear"}</h3>
+              <p className="sub" style={{ marginTop: 2 }}>{busy ? "Check the details below." : "No meetings, not on call, no invites to answer."}</p>
+            </div>
+          </div>
+        </div>
+        <PageRef page={item.page} pdfUrl={ctx.pdfUrl} />
+      </div>
+      <ul className="cal-rows">
+        {rows.map((r) => (
+          <li key={r.label} className={r.value ? "on" : ""}>
+            <span className="cal-ico">{r.icon()}</span>
+            <span className="cal-label">{r.label}</span>
+            <span className="cal-value">{r.value ?? "None"}</span>
+          </li>
+        ))}
+      </ul>
+      {(st.checked || link) && (
+        <div className="cal-foot">
+          {link && <a className="btn primary" href={link.url} target="_blank" rel="noreferrer">{Icon.open()} Open calendar</a>}
+          {link && <CopyButton url={link.url} label="Copy calendar link" />}
+        </div>
+      )}
+      {st.checked && (
+        <details className="cal-checked">
+          <summary className="btn ghost sm">What was checked {Icon.chev()}</summary>
+          <p className="body">{st.checked}</p>
+        </details>
+      )}
     </article>
   );
 }
@@ -228,6 +279,7 @@ export function ItemView({ item, ctx, compact = false }: { item: Item; ctx: Ctx;
   switch (item.kind) {
     case "action": return <ActionCard item={item} ctx={ctx} compact={compact} />;
     case "glance": return <GlanceItem item={item} ctx={ctx} />;
+    case "calendar": return <CalendarCard item={item} ctx={ctx} />;
     case "headline": return <HeadlineCard item={item} ctx={ctx} />;
     case "question": return <QuestionCard item={item} ctx={ctx} />;
     case "job": return <JobCard item={item} ctx={ctx} />;
