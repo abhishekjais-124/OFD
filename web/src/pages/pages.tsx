@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Briefing, Item, Section } from "@shared/schema";
 import { formatDateTimeIST, formatLongDateIST, greetingIST, nameFromGreetingTitle } from "@shared/ist";
+import { formatBytes } from "@shared/more";
 import { Segmented } from "../components/nav.tsx";
 import { AlertList, UpdateRow } from "../components/mail.tsx";
 import { JobView, QuestionView } from "../components/learn.tsx";
 import { LeadStory, StoryRow } from "../components/news.tsx";
 import { mixStories } from "@shared/news";
-import { ItemView, NotesPanel } from "../components/sections.tsx";
+import { ItemView } from "../components/sections.tsx";
 import { Chip, Icon, LinkChips } from "../components/ui.tsx";
-import { Upload } from "../components/Upload.tsx";
+import { ActionRow, AboutRow, BriefingHeader, DayPills, NotesRow, SettingsGroup, SourcesRow, UploadRow } from "../components/more.tsx";
 import { SkyScene, WeatherIcon, type WeatherState } from "../weather.tsx";
 import { filterSections, countItems } from "../search.ts";
 
@@ -355,62 +356,56 @@ export interface MoreProps extends PageProps {
 export function MorePage(p: MoreProps) {
   const b = p.briefing;
   const ctx = ctxOf(p);
-  const other = b.sections.filter((s) => s.kind === "routine" || s.kind === "unknown");
-  const cached = p.sourceKind !== "upload";
+  const upload = p.sourceKind === "upload";
+  const routine = b.sections.filter((s) => s.kind === "routine").flatMap((s) => s.items);
+  const extra = b.sections.filter((s) => s.kind === "unknown");
+  const pick = (d: string) => p.onOpenDate(d === p.todayIST ? "today" : d);
   return (
     <>
-      <Group title="This briefing">
-        <article className="card">
-          <dl className="fields" style={{ marginTop: 0 }}>
-            <dt>Date</dt><dd>{b.date ? formatLongDateIST(b.date) : "unknown"}</dd>
-            <dt>File</dt><dd>{b.source.fileName}</dd>
-            <dt>Processed</dt><dd>{formatDateTimeIST(new Date(b.processedAt))}{p.cached ? " · cached" : ""}</dd>
-            {b.source.modifiedTime && <><dt>Drive version</dt><dd>{formatDateTimeIST(new Date(b.source.modifiedTime))}</dd></>}
-            <dt>Pages</dt><dd>{b.pageCount}</dd>
-          </dl>
-          <div className="actions-row" style={{ marginTop: 14 }}>
-            {cached && <button className="btn" type="button" onClick={p.onRefresh} disabled={p.busy !== null}>{Icon.refresh(p.busy === "refresh" ? "spin" : undefined)} Refresh</button>}
-            <button className="btn" type="button" onClick={p.onReprocess} disabled={p.busy !== null}>{Icon.reprocess(p.busy === "reprocess" ? "spin" : undefined)} Reprocess</button>
-            <a className="btn" href={b.pdfUrl} target="_blank" rel="noreferrer">{Icon.pdf()} Original PDF</a>
-            {b.source.webViewLink && <a className="btn ghost" href={b.source.webViewLink} target="_blank" rel="noreferrer">{Icon.open()} On Drive</a>}
-          </div>
-        </article>
-      </Group>
+      <BriefingHeader briefing={b} cached={p.cached} busy={p.busy} canRefresh={!upload} onRefresh={p.onRefresh} onReprocess={p.onReprocess} />
 
-      {p.availableDates.length > 0 && (
-        <Group title="Other days">
-          <div className="chips wrap">
-            {p.availableDates.map((d) => (
-              <button key={d} className={`btn sm${b.date === d && p.sourceKind !== "upload" ? " on" : ""}`} type="button" onClick={() => p.onOpenDate(d === p.todayIST ? "today" : d)}>{d === p.todayIST ? "Today" : d}</button>
-            ))}
-          </div>
-        </Group>
+      <SettingsGroup title="Open">
+        <div className="mlist">
+          <ActionRow icon={Icon.pdf()} title="Original PDF" sub={[b.source.fileName, formatBytes(b.source.size)].filter(Boolean).join(" · ")} href={b.pdfUrl} />
+          {b.source.webViewLink && <ActionRow icon={Icon.open()} title="On Google Drive" sub="Opens the file in Drive" href={b.source.webViewLink} />}
+        </div>
+      </SettingsGroup>
+
+      {p.availableDates.length > 1 && (
+        <SettingsGroup title="Days">
+          <DayPills dates={p.availableDates} today={p.todayIST} current={upload ? null : b.date} onPick={pick} />
+        </SettingsGroup>
       )}
 
-      <Group title="Read another PDF"><Upload onFile={p.onUpload} busy={p.busy !== null} /></Group>
+      <SettingsGroup>
+        <div className="mlist"><UploadRow onFile={p.onUpload} busy={p.busy !== null} /></div>
+      </SettingsGroup>
 
-      {other.length > 0 && other.map((s) => (
+      <SettingsGroup title="Behind the scenes">
+        <div className="mlist">
+          {routine.map((i) => <SourcesRow key={i.id} item={i} />)}
+          <NotesRow briefing={b} />
+          <AboutRow briefing={b} />
+        </div>
+      </SettingsGroup>
+
+      {extra.map((s) => (
         <Group key={s.id} title={s.title} count={s.items.length}>{s.items.map((i) => <ItemView key={i.id} item={i} ctx={ctx} />)}</Group>
       ))}
-
-      <NotesPanel briefing={b} />
     </>
   );
 }
 
-
-/** More page when there is no briefing to show (missing, error): days, upload and appearance still work. */
+/** More page when there is no briefing to show (missing, error): days and upload still work. */
 export function MoreLite(p: Pick<MoreProps, "busy" | "availableDates" | "onUpload" | "onOpenDate" | "todayIST">) {
   return (
     <>
       {p.availableDates.length > 0 && (
-        <Group title="Days in the folder">
-          <div className="chips wrap">
-            {p.availableDates.map((d) => <button key={d} className="btn sm" type="button" onClick={() => p.onOpenDate(d === p.todayIST ? "today" : d)}>{d === p.todayIST ? "Today" : d}</button>)}
-          </div>
-        </Group>
+        <SettingsGroup title="Days in the folder">
+          <DayPills dates={p.availableDates} today={p.todayIST} current={null} onPick={(d) => p.onOpenDate(d === p.todayIST ? "today" : d)} />
+        </SettingsGroup>
       )}
-      <Group title="Read a PDF"><Upload onFile={p.onUpload} busy={p.busy !== null} /></Group>
+      <SettingsGroup title="Read a PDF"><div className="mlist"><UploadRow onFile={p.onUpload} busy={p.busy !== null} /></div></SettingsGroup>
     </>
   );
 }

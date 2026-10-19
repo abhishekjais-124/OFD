@@ -183,3 +183,13 @@ export function timeAgo(instant: Date, now: Date = new Date()): string {
   if (days < 7) return `${days} d ago`;
   return formatShortDateIST(toIsoDateIST(instant));
 }
+
+/** "Today", "Yesterday" or "Sun 18 Oct" for an IST date, relative to `today`. */
+export function dayLabel(date: IsoDate, today: IsoDate): string {
+  if (date === today) return "Today";
+  if (date === addDaysIST(today, -1)) return "Yesterday";
+  if (date === addDaysIST(today, 1)) return "Tomorrow";
+  const p = istParts(new Date(startOfDayIST(date).getTime() + 12 * 60 * 60_000));
+  const weekday = WEEKDAYS[new Date(Date.UTC(p.year, p.month - 1, p.day)).getUTCDay()]!.slice(0, 3);
+  return `${weekday} ${p.day} ${MONTHS[p.month - 1]}`;
+}
