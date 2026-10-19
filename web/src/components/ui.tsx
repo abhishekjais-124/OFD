@@ -25,6 +25,7 @@ export const Icon = {
   more: () => <svg viewBox="0 0 24 24" {...p}><circle cx="5" cy="12" r="1.2" /><circle cx="12" cy="12" r="1.2" /><circle cx="19" cy="12" r="1.2" /></svg>,
   calendar: () => <svg viewBox="0 0 24 24" {...p}><rect x="3.5" y="5" width="17" height="15" rx="2.5" /><path d="M8 3v4M16 3v4M3.5 10h17" /></svg>,
   briefcase: () => <svg viewBox="0 0 24 24" {...p}><rect x="3" y="7" width="18" height="13" rx="2.5" /><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M3 13h18" /></svg>,
+  pin: () => <svg viewBox="0 0 24 24" {...p}><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></svg>,
   back: () => <svg viewBox="0 0 24 24" {...p}><path d="M15 5l-7 7 7 7" /></svg>,
   check: () => <svg viewBox="0 0 24 24" {...p}><path d="M5 12l4 4L19 7" /></svg>,
 };

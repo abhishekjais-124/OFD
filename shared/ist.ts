@@ -156,18 +156,13 @@ export function countdownIST(deadline: IsoDate, now: Date = new Date()): Countdo
   return { days, msRemaining, state: "upcoming", label: `${days} days left` };
 }
 
-export interface Greeting {
-  text: string;
-  emoji: string;
-}
-
 /** Salutation for the IST hour: morning 5-11, afternoon 12-16, evening 17-20, night otherwise. */
-export function greetingIST(now: Date = new Date()): Greeting {
+export function greetingIST(now: Date = new Date()): string {
   const h = istParts(now).hour;
-  if (h >= 5 && h < 12) return { text: "Good morning", emoji: "☀️" };
-  if (h >= 12 && h < 17) return { text: "Good afternoon", emoji: "🌤️" };
-  if (h >= 17 && h < 21) return { text: "Good evening", emoji: "🌆" };
-  return { text: "Good night", emoji: "🌙" };
+  if (h >= 5 && h < 12) return "Good morning";
+  if (h >= 12 && h < 17) return "Good afternoon";
+  if (h >= 17 && h < 21) return "Good evening";
+  return "Good night";
 }
 
 /** The name in a title like "Good morning, Abhishek ☀️", or null when there is none. */

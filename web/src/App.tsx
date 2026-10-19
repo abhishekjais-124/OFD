@@ -4,6 +4,7 @@ import { api, type ApiResult } from "./api.ts";
 import { AppBar, TabBar, type Tab } from "./components/nav.tsx";
 import { ErrorState, MissingState, OfflineBanner, Skeleton } from "./components/states.tsx";
 import { Icon, ToastProvider, useToast } from "./components/ui.tsx";
+import { skyKey, useWeather } from "./weather.tsx";
 import { LearnPage, MailPage, MoreLite, MorePage, NewsPage, SearchPage, TodayPage, type PageProps } from "./pages/pages.tsx";
 
 type Route = Tab | "search";
@@ -47,6 +48,7 @@ function Shell() {
   const [query, setQuery] = useState("");
   const [online, setOnline] = useState(navigator.onLine);
   const [now, setNow] = useState(() => new Date());
+  const weather = useWeather();
   const reqId = useRef(0);
   const sourceRef = useRef(source);
   sourceRef.current = source;
@@ -73,6 +75,12 @@ function Shell() {
   }, []);
 
   useEffect(() => { window.scrollTo(0, 0); }, [route]);
+
+  const sky = skyKey(weather.state.status === "ok" ? weather.state.weather : null);
+  useEffect(() => {
+    if (sky) document.documentElement.dataset.sky = sky;
+    else delete document.documentElement.dataset.sky;
+  }, [sky]);
 
   const go = useCallback((r: Route, s?: Source) => {
     const next = s ?? sourceRef.current;
@@ -136,7 +144,7 @@ function Shell() {
   );
   const offline = !online || Boolean(loaded?.fromCache);
   const pageProps: PageProps | null = briefing && response
-    ? { briefing, todayIST: response.todayIST, now, cached: response.cached, notices: response.notices, sourceKind: response.sourceKind }
+    ? { briefing, todayIST: response.todayIST, now, cached: response.cached, notices: response.notices, sourceKind: response.sourceKind, weather: weather.state, onLocate: weather.retry }
     : null;
   const todayIST = response?.todayIST ?? "";
   const moreCommon = {

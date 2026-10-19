@@ -5,6 +5,7 @@ import { Segmented } from "../components/nav.tsx";
 import { ItemView, NotesPanel } from "../components/sections.tsx";
 import { Chip, Icon } from "../components/ui.tsx";
 import { Upload } from "../components/Upload.tsx";
+import { SkyScene, WeatherIcon, type WeatherState } from "../weather.tsx";
 import { filterSections, countItems } from "../search.ts";
 
 export interface PageProps {
@@ -14,6 +15,8 @@ export interface PageProps {
   cached: boolean;
   notices: string[];
   sourceKind: "drive" | "upload" | null;
+  weather: WeatherState;
+  onLocate: () => void;
 }
 
 const ctxOf = (p: PageProps) => ({ pdfUrl: p.briefing.pdfUrl, now: p.now });
@@ -34,27 +37,54 @@ function Group({ title, count, children }: { title: string; count?: number; chil
 }
 
 /* ---------------- Today ---------------- */
-/** Salutation and emoji for the current IST hour, with the name taken from the document title. */
+function WeatherReadout({ state, onLocate }: { state: WeatherState; onLocate: () => void }) {
+  if (state.status === "locating" || state.status === "loading") {
+    return <div className="wx"><span className="skeleton" style={{ width: 180, height: 44, borderRadius: 14 }} /></div>;
+  }
+  if (state.status !== "ok") {
+    return (
+      <div className="wx wx-ask">
+        <span className="small">{"message" in state ? state.message : ""}</span>
+        <button className="btn sm" type="button" onClick={onLocate}>{Icon.pin()} Use my location for weather</button>
+      </div>
+    );
+  }
+  const w = state.weather;
+  return (
+    <div className="wx">
+      <span className="wx-icon"><WeatherIcon sky={w.sky} isDay={w.isDay} /></span>
+      <span className="wx-temp">{w.tempC}°</span>
+      <div className="wx-meta">
+        <strong>{w.label}</strong>
+        <span>{[w.place, `feels ${w.feelsC}°`, w.highC !== null && w.lowC !== null ? `H ${w.highC}° L ${w.lowC}°` : null].filter(Boolean).join(" · ")}</span>
+      </div>
+    </div>
+  );
+}
+
+/** Salutation for the current IST hour, with the name taken from the document title. */
 function greeting(title: string, now: Date): string {
-  const g = greetingIST(now);
   const name = nameFromGreetingTitle(title);
-  return `${g.text}${name ? `, ${name}` : ""} ${g.emoji}`;
+  return `${greetingIST(now)}${name ? `, ${name}` : ""}`;
 }
 
 export function TodayPage(p: PageProps) {
   const { briefing: b } = p;
   const ctx = ctxOf(p);
   const isToday = b.date === p.todayIST;
+  const wx = p.weather.status === "ok" ? p.weather.weather : null;
   const actions = allItems(sectionsOf(b, "mail")).filter((i) => i.kind === "action" && i.action);
   actions.sort((x, y) => (x.action!.deadlineDate ?? "9999").localeCompare(y.action!.deadlineDate ?? "9999"));
   const glance = allItems(sectionsOf(b, "glance"));
   const calendar = allItems(sectionsOf(b, "calendar"));
   return (
     <>
-      <div className="hero fade-in">
+      <div className="hero fade-in" data-sky={wx?.sky ?? "none"} data-day={wx ? (wx.isDay ? "day" : "night") : "none"}>
+        {wx && <SkyScene sky={wx.sky} isDay={wx.isDay} />}
         <span className="eyebrow">{p.sourceKind === "upload" ? "Uploaded file" : isToday ? "Today" : "Not today"}</span>
         <h2 className="hero-title">{greeting(b.title, p.now)}</h2>
         <p className="date">{b.date ? formatLongDateIST(b.date) : "Date unknown"}{b.dateSource === "content" ? " (read from the document)" : ""}</p>
+        <WeatherReadout state={p.weather} onLocate={p.onLocate} />
         <div className="meta-row">
           {!isToday && p.sourceKind !== "upload" && <Chip tone="warn">Showing {b.date ?? "an undated file"}, today is {p.todayIST}</Chip>}
           {p.sourceKind === "upload" && <Chip tone="accent">{b.source.fileName}</Chip>}

@@ -204,3 +204,21 @@ export interface StatusResponse {
   todayIST: string;
   ocrEnabled: boolean;
 }
+
+export type Sky = "clear" | "partly" | "cloudy" | "fog" | "drizzle" | "rain" | "snow" | "thunder";
+
+/** What GET /api/weather returns. Temperatures are in degrees Celsius, wind in km/h. */
+export interface WeatherResponse {
+  sky: Sky;
+  isDay: boolean;
+  label: string;
+  tempC: number;
+  feelsC: number;
+  highC: number | null;
+  lowC: number | null;
+  windKph: number;
+  humidity: number;
+  place: string | null;
+  /** ISO instant the observation was fetched on the server. */
+  fetchedAt: string;
+}

@@ -88,7 +88,7 @@ describe("countdownIST", () => {
 import { greetingIST, nameFromGreetingTitle } from "./ist.ts";
 
 describe("greetingIST", () => {
-  const at = (iso: string) => greetingIST(new Date(iso)).text;
+  const at = (iso: string) => greetingIST(new Date(iso));
   it("follows the IST hour, not UTC", () => {
     expect(at("2026-10-19T00:00:00Z")).toBe("Good morning"); // 05:30 IST
     expect(at("2026-10-18T23:29:00Z")).toBe("Good night"); // 04:59 IST
@@ -98,10 +98,6 @@ describe("greetingIST", () => {
     expect(at("2026-10-19T11:30:00Z")).toBe("Good evening"); // 17:00 IST
     expect(at("2026-10-19T15:29:00Z")).toBe("Good evening"); // 20:59 IST
     expect(at("2026-10-19T15:30:00Z")).toBe("Good night"); // 21:00 IST
-  });
-  it("pairs each salutation with an emoji", () => {
-    expect(greetingIST(new Date("2026-10-19T04:00:00Z")).emoji).toBe("☀️");
-    expect(greetingIST(new Date("2026-10-19T16:30:00Z")).emoji).toBe("🌙");
   });
 });
 
