@@ -18,6 +18,12 @@ export const Icon = {
   chev: () => <svg viewBox="0 0 24 24" {...p} className="chev"><path d="M6 9l6 6 6-6" /></svg>,
   offline: () => <svg viewBox="0 0 24 24" {...p}><path d="M3 3l18 18M8.5 16.5a5 5 0 0 1 7-7M5 12.5A10 10 0 0 1 8 9.5M12 20h.01M19 12.5a10 10 0 0 0-2.5-2.4" /></svg>,
   warn: () => <svg viewBox="0 0 24 24" {...p}><path d="M12 3l10 18H2L12 3zM12 10v4M12 17.5h.01" /></svg>,
+  home: () => <svg viewBox="0 0 24 24" {...p}><path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z" /></svg>,
+  mail: () => <svg viewBox="0 0 24 24" {...p}><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 7l9 6 9-6" /></svg>,
+  news: () => <svg viewBox="0 0 24 24" {...p}><path d="M5 4h11a1 1 0 0 1 1 1v14H6a2 2 0 0 1-2-2V5a1 1 0 0 1 1-1zM17 8h3v9a2 2 0 0 1-2 2M8 8h6M8 12h6M8 15h4" /></svg>,
+  learn: () => <svg viewBox="0 0 24 24" {...p}><path d="M12 3l9 4.5-9 4.5-9-4.5zM7 10.5v5c0 1.2 2.2 2.5 5 2.5s5-1.3 5-2.5v-5" /></svg>,
+  more: () => <svg viewBox="0 0 24 24" {...p}><circle cx="5" cy="12" r="1.2" /><circle cx="12" cy="12" r="1.2" /><circle cx="19" cy="12" r="1.2" /></svg>,
+  back: () => <svg viewBox="0 0 24 24" {...p}><path d="M15 5l-7 7 7 7" /></svg>,
   check: () => <svg viewBox="0 0 24 24" {...p}><path d="M5 12l4 4L19 7" /></svg>,
 };
 

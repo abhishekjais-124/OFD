@@ -13,7 +13,7 @@ function read(): ThemeChoice {
 }
 
 /** Follows the system theme unless the user picked one; the choice is remembered on this device. */
-export function useTheme(): { choice: ThemeChoice; effective: "light" | "dark"; cycle: () => void } {
+export function useTheme(): { choice: ThemeChoice; effective: "light" | "dark"; cycle: () => void; set: (c: ThemeChoice) => void } {
   const [choice, setChoice] = useState<ThemeChoice>(read);
   const [system, setSystem] = useState<"light" | "dark">(() =>
     window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light",
@@ -35,5 +35,5 @@ export function useTheme(): { choice: ThemeChoice; effective: "light" | "dark"; 
     }
   }, [choice, effective]);
   const cycle = () => setChoice(choice === "system" ? (system === "dark" ? "light" : "dark") : choice === "light" ? "dark" : "system");
-  return { choice, effective, cycle };
+  return { choice, effective, cycle, set: setChoice };
 }
