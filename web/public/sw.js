@@ -56,7 +56,7 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(cacheFirst(req, MEDIA));
     return;
   }
-  if (path === "/api/today" || path.startsWith("/api/briefings") || path.startsWith("/api/documents/") || path === "/api/status") {
+  if (path === "/api/today" || path === "/api/weather" || path.startsWith("/api/briefings") || path.startsWith("/api/documents/") || path === "/api/status") {
     // the API result itself says whether it is ok; cache the body either way so the last state is readable offline
     event.respondWith(networkFirst(req, API, { storeOnlyOk: true }));
     return;

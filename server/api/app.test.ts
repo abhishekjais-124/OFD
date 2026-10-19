@@ -60,6 +60,19 @@ describe("API", () => {
     expect(list.body.cached[0].key).toBe("drive:f1");
   });
 
+  it("serves weather for rounded coordinates and rejects bad ones", async () => {
+    const seen: [number, number][] = [];
+    const weather = { async get(lat: number, lon: number) { seen.push([lat, lon]); return { sky: "rain", isDay: true, label: "Rain", tempC: 25, feelsC: 27, highC: 28, lowC: 21, windKph: 9, humidity: 80, place: "Bengaluru", fetchedAt: "2026-01-15T04:00:00.000Z" } as const; } };
+    const pipeline = new Pipeline({ drive, folderId: "folder", store: fileStore(dir), ocr: null });
+    const a = createApp({ pipeline, weather, status: { driveConfigured: true, driveAuthMode: "fake", folderId: "folder", ocrEnabled: false } });
+    const ok = await request(a).get("/api/weather?lat=12.971599&lon=77.594566").expect(200);
+    expect(ok.body).toMatchObject({ sky: "rain", tempC: 25, place: "Bengaluru" });
+    expect(seen).toEqual([[12.97, 77.59]]);
+    await request(a).get("/api/weather?lat=200&lon=0").expect(400);
+    await request(a).get("/api/weather").expect(400);
+    await request(app()).get("/api/weather?lat=1&lon=1").expect(404);
+  });
+
   it("accepts an uploaded PDF as raw bytes", async () => {
     const a = app();
     const res = await request(a).post("/api/upload").set("content-type", "application/pdf").set("x-file-name", "Morning-Briefing-2026-01-15.pdf").send(pdf).expect(200);

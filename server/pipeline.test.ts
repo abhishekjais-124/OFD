@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { Pipeline } from "./pipeline.ts";
+import { Pipeline, type PipelineDeps } from "./pipeline.ts";
 import { PARSER_VERSION } from "./normalize/index.ts";
 import { fileStore } from "./store/cache.ts";
 import { DriveError, type DriveClient, type DriveFile } from "./drive/index.ts";
@@ -54,8 +54,8 @@ describe("Pipeline", () => {
   });
   afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));
 
-  function pipeline(drive: DriveClient, folderId: string | null = "folder") {
-    return new Pipeline({ drive, folderId, store: fileStore(dir), ocr: null, now: clock, listingTtlMs: 60_000 });
+  function pipeline(drive: DriveClient, folderId: string | null = "folder", fetchImage?: PipelineDeps["fetchImage"]) {
+    return new Pipeline({ drive, folderId, store: fileStore(dir), ocr: null, now: clock, listingTtlMs: 60_000, fetchImage });
   }
 
   it("shows today's briefing, caches it, and serves the cache on the next call", async () => {
@@ -213,5 +213,24 @@ describe("Pipeline", () => {
     expect(scanned.status).toBe("ok");
     expect(scanned.briefing?.confidence).toBe("partial");
     expect(scanned.requestedDate).toBe("unknown");
+  });
+
+  it("fetches a printed https Image: URL for a headline without an embedded picture, and refuses unsafe ones", async () => {
+    const pdf = fs.readFileSync(path.join(fixtures, "remote-images.pdf"));
+    const asked: string[] = [];
+    const p = pipeline(fakeDrive([]), null, async (url) => {
+      asked.push(url);
+      return { bytes: new Uint8Array([1, 2, 3]), type: "image/jpeg" };
+    });
+    const r = await p.processUpload(pdf, "Morning-Briefing-2026-01-16.pdf");
+    const heads = r.briefing!.sections.filter((s) => s.kind === "headlines").flatMap((s) => s.items).filter((i) => i.kind === "headline");
+    expect(heads).toHaveLength(3);
+    expect(asked).toEqual(["https://img.example.com/harbour.jpg"]); // "none" and a literal IP are never fetched
+    expect(heads[0]!.images[0]!.url).toMatch(/^\/api\/images\/[0-9a-f]{40}\.png$/);
+    expect(p.imagePath(heads[0]!.images[0]!.id)).not.toBeNull();
+    expect(heads[1]!.images).toHaveLength(0);
+    expect(heads[2]!.images).toHaveLength(0);
+    const notes = r.briefing!.notes.filter((n) => n.code === "headline_without_image");
+    expect(notes).toHaveLength(2); // only the two stories that still have no picture
   });
 });

@@ -8,6 +8,7 @@ export function sectionKindFor(title: string): SectionKind {
   const t = title.toLowerCase();
   if (/at a glance|summary|overview/.test(t)) return "glance";
   if (/^mail\b|inbox|e-?mail/.test(t)) return "mail";
+  if (/slack|mention/.test(t)) return "slack";
   if (/calendar|invite|meeting/.test(t)) return "calendar";
   if (/headline|news/.test(t)) return "headlines";
   if (/question|problem|leetcode/.test(t)) return "question";
@@ -101,6 +102,25 @@ export function parseMail(ctx: ParseContext, items: LayoutItem[]): Item[] {
 
 export function parseCalendar(ctx: ParseContext, items: LayoutItem[]): Item[] {
   return items.map((it) => (it.type === "block" ? baseItem(ctx, it, "calendar") : genericItems(ctx, [it])[0]!));
+}
+
+/** Slack mentions: one card each, "**Sender · #channel", "Text: ...", "Time: ...", "Open: <link>". */
+export function parseSlack(ctx: ParseContext, items: LayoutItem[]): Item[] {
+  return items.map((it) => {
+    if (it.type !== "block" || !it.lines.length) return genericItems(ctx, [it])[0]!;
+    const base = baseItem(ctx, it, "mention");
+    const text = field(base.fields, "Text", "Message");
+    if (!text) return genericItems(ctx, [it])[0]!;
+    const [from, where] = it.lines[0]!.text.split(/\s+·\s+/);
+    const timeText = field(base.fields, "Time", "When");
+    const ts = timeText ? parseTimestampLine(timeText) : null;
+    const link = base.links.find((l) => l.label && /^open/i.test(l.label)) ?? base.links[0];
+    return {
+      ...base,
+      title: from,
+      mention: { from: from ?? "", where, text, timeText: ts?.timestampText ?? timeText, timestamp: ts?.timestamp ?? null, url: link?.url ?? null },
+    };
+  });
 }
 
 export function parseHeadlines(ctx: ParseContext, items: LayoutItem[]): Item[] {
@@ -197,6 +217,7 @@ export const PARSERS: Record<SectionKind, (ctx: ParseContext, items: LayoutItem[
   glance: parseGlance,
   mail: parseMail,
   calendar: parseCalendar,
+  slack: parseSlack,
   headlines: parseHeadlines,
   question: parseQuestion,
   job: parseJob,

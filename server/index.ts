@@ -6,6 +6,7 @@ import { driveClientFromConfig } from "./drive/index.ts";
 import { tesseractEngine } from "./extract/index.ts";
 import { Pipeline } from "./pipeline.ts";
 import { fileStore } from "./store/cache.ts";
+import { weatherService } from "./weather.ts";
 
 loadDotEnv();
 const cfg = readConfig();
@@ -21,6 +22,7 @@ const pipeline = new Pipeline({
 const staticDir = path.resolve(import.meta.dirname, "..", "web");
 const app = createApp({
   pipeline,
+  weather: weatherService(),
   status: { driveConfigured: drive.configured, driveAuthMode: drive.mode, folderId: cfg.drive.folderId, ocrEnabled: cfg.ocrEnabled },
   staticDir: fs.existsSync(path.join(staticDir, "index.html")) ? staticDir : undefined,
 });

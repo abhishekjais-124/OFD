@@ -2,9 +2,11 @@ import express, { type Express } from "express";
 import type { StatusResponse } from "../../shared/schema.ts";
 import { isIsoDate } from "../../shared/ist.ts";
 import type { Pipeline } from "../pipeline.ts";
+import { WeatherError, parseCoordinates, type WeatherService } from "../weather.ts";
 
 export interface AppDeps {
   pipeline: Pipeline;
+  weather?: WeatherService;
   status: Omit<StatusResponse, "todayIST" | "parserVersion">;
   /** Directory of the built web app; when set, it is served as static files. */
   staticDir?: string;
@@ -18,6 +20,24 @@ export function createApp(deps: AppDeps): Express {
   app.get("/api/status", (_req, res) => {
     const body: StatusResponse = { ...deps.status, todayIST: pipeline.todayIST(), parserVersion: pipeline.parserVersion };
     res.json(body);
+  });
+
+  app.get("/api/weather", async (req, res) => {
+    if (!deps.weather) {
+      res.status(404).json({ error: { code: "disabled", message: "weather is not enabled", retryable: false } });
+      return;
+    }
+    try {
+      const { lat, lon } = parseCoordinates(req.query.lat, req.query.lon);
+      res.setHeader("cache-control", "private, max-age=300");
+      res.json(await deps.weather.get(lat, lon));
+    } catch (err) {
+      if (err instanceof WeatherError && err.code === "bad_coordinates") {
+        res.status(400).json({ error: { code: err.code, message: err.message, retryable: false } });
+      } else {
+        res.status(502).json({ error: { code: "weather_unavailable", message: (err as Error).message, retryable: true } });
+      }
+    }
   });
 
   app.get("/api/today", async (req, res) => {

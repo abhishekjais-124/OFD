@@ -80,6 +80,16 @@ drive (find + fetch)  →  extract (text, links, images, OCR)  →  normalize + 
 * **PWA**: `web/public/sw.js` keeps the app shell, the last API answers, images and PDFs, and
   the UI shows "Offline, showing data from <time>" when a response came from that cache.
 
+### Weather
+
+The Today hero shows the weather at the device's location and restyles itself to match: sky colours,
+sun or moon, stars, clouds, rain, snow, fog or lightning, and a matching tint behind the whole app.
+The browser asks for location permission once; the last position and reading are kept on the device.
+The UI sends only coordinates rounded to two decimals (about 1 km) to this server, which asks
+[Open-Meteo](https://open-meteo.com/) for the conditions and BigDataCloud's keyless reverse geocoder
+for the place name, and caches the answer for ten minutes. No keys, no accounts. If location is
+blocked, the hero stays on the default style and offers a "Use my location" button.
+
 ### API
 
 | Route | Purpose |
@@ -92,6 +102,7 @@ drive (find + fetch)  →  extract (text, links, images, OCR)  →  normalize + 
 | `POST /api/upload` | Raw PDF bytes in the body (`x-file-name` header optional). |
 | `GET /api/documents/:key/pdf` | The original PDF (`#page=N` jumps to a page). |
 | `GET /api/images/:id.png` | An extracted image. |
+| `GET /api/weather?lat=&lon=` | Current weather for a coordinate (rounded to 2 decimals), cached 10 minutes. |
 | `GET /api/status` | Drive mode, folder, parser version, today in IST. |
 
 ## Testing

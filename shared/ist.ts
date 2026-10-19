@@ -155,3 +155,41 @@ export function countdownIST(deadline: IsoDate, now: Date = new Date()): Countdo
   if (days === 1) return { days, msRemaining, state: "tomorrow", label: "due tomorrow" };
   return { days, msRemaining, state: "upcoming", label: `${days} days left` };
 }
+
+/** Salutation for the IST hour: morning 5-11, afternoon 12-16, evening 17-20, night otherwise. */
+export function greetingIST(now: Date = new Date()): string {
+  const h = istParts(now).hour;
+  if (h >= 5 && h < 12) return "Good morning";
+  if (h >= 12 && h < 17) return "Good afternoon";
+  if (h >= 17 && h < 21) return "Good evening";
+  return "Good night";
+}
+
+/** The name in a title like "Good morning, Abhishek ☀️", or null when there is none. */
+export function nameFromGreetingTitle(title: string): string | null {
+  const m = /^[^,]{2,30},\s*([\p{L}][\p{L}\p{M}'’. -]{0,40}?)\s*[^\p{L}\p{N}]*$/u.exec(title.trim());
+  return m ? m[1]!.trim() : null;
+}
+
+/** "just now", "12 min ago", "3 h ago", "yesterday", "4 d ago", or a short date for older items. Future times read as "just now". */
+export function timeAgo(instant: Date, now: Date = new Date()): string {
+  const mins = Math.floor((now.getTime() - instant.getTime()) / 60_000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins} min ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} h ago`;
+  const days = Math.round((startOfDayIST(toIsoDateIST(now)).getTime() - startOfDayIST(toIsoDateIST(instant)).getTime()) / 86_400_000);
+  if (days <= 1) return "yesterday";
+  if (days < 7) return `${days} d ago`;
+  return formatShortDateIST(toIsoDateIST(instant));
+}
+
+/** "Today", "Yesterday" or "Sun 18 Oct" for an IST date, relative to `today`. */
+export function dayLabel(date: IsoDate, today: IsoDate): string {
+  if (date === today) return "Today";
+  if (date === addDaysIST(today, -1)) return "Yesterday";
+  if (date === addDaysIST(today, 1)) return "Tomorrow";
+  const p = istParts(new Date(startOfDayIST(date).getTime() + 12 * 60 * 60_000));
+  const weekday = WEEKDAYS[new Date(Date.UTC(p.year, p.month - 1, p.day)).getUTCDay()]!.slice(0, 3);
+  return `${weekday} ${p.day} ${MONTHS[p.month - 1]}`;
+}

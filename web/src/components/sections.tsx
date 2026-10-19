@@ -1,6 +1,11 @@
+import type { ReactNode } from "react";
+import { actionKey, useDone } from "../done.ts";
+import { MentionRow } from "./mentions.tsx";
 import type { Briefing, Item, Section } from "@shared/schema";
+import { splitSteps, topSteps } from "@shared/actions";
+import { parseCalendarStatus } from "@shared/calendar";
 import { countdownIST, formatDateTimeIST, formatShortDateIST } from "@shared/ist";
-import { Chip, DataTable, FieldList, Flags, Icon, LinkList, PageRef } from "./ui.tsx";
+import { Chip, CopyButton, DataTable, FieldList, Flags, Icon, LinkChips, LinkList, PageRef } from "./ui.tsx";
 
 interface Ctx {
   pdfUrl: string;
@@ -28,35 +33,115 @@ function Countdown({ date, now, text }: { date: string | null; now: Date; text?:
   return <span className={`countdown ${c.state}`} title={text}>{c.label} · {formatShortDateIST(date)}{/eod/i.test(text ?? "") ? " EOD" : ""}</span>;
 }
 
-function ActionCard({ item, ctx }: { item: Item; ctx: Ctx }) {
-  const a = item.action!;
+/** The key steps as a plain list: what to do, in order. */
+function TodoList({ steps, hidden = 0 }: { steps: { n: number; text: string }[]; hidden?: number }) {
   return (
-    <article className={`card${a.priority === "important" ? " danger" : ""} fade-in`}>
+    <div className="todo">
+      <p className="todo-head"><span>{hidden > 0 ? "Top actions to take" : "Actions to take"}</span></p>
+      <ol className="todo-list">
+        {steps.map((st) => <li key={st.n} value={hidden > 0 ? undefined : st.n}>{st.text}</li>)}
+      </ol>
+      {hidden > 0 && (
+        <button className="todo-more" type="button" onClick={() => goTab("mail")}>
+          +{hidden} more step{hidden === 1 ? "" : "s"} in Mail {Icon.chev()}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function ActionCard({ item, ctx, compact = false }: { item: Item; ctx: Ctx; compact?: boolean }) {
+  const a = item.action!;
+  const { key: keySteps, other: otherSteps } = splitSteps(a.steps);
+  const [done, toggleDone] = useDone(actionKey(item));
+  const shown = topSteps(keySteps, 3);
+  return (
+    <article className={`card${a.priority === "important" && !done ? " danger" : ""}${done ? " is-done" : ""} fade-in`}>
       <div className="card-top">
         <div className="grow">
           <div className="meta-row" style={{ marginBottom: 6 }}>
             {a.priority === "important" && <span className="badge danger">Important</span>}
-            <Countdown date={a.deadlineDate} now={ctx.now} text={a.deadlineText} />
+            {done ? <span className="countdown done">Done</span> : <Countdown date={a.deadlineDate} now={ctx.now} text={a.deadlineText} />}
             <Flags flags={item.flags} />
           </div>
           <h3>{item.title}</h3>
-          {(a.from || a.received) && <p className="sub">{a.from && <>From {a.from}</>}{a.from && a.received && " · "}{a.received && <>received {a.received}</>}</p>}
         </div>
         <PageRef page={item.page} pdfUrl={ctx.pdfUrl} />
       </div>
+      {keySteps.length > 0 && (compact ? <TodoList steps={shown.shown} hidden={shown.hidden} /> : <TodoList steps={keySteps} />)}
       <details>
         <summary className="btn ghost sm" style={{ marginTop: 8 }}>Details {Icon.chev()}</summary>
         <div className="body">
+          {(a.from || a.received) && <p className="sub" style={{ marginTop: 0 }}>{a.from && <>From {a.from}</>}{a.from && a.received && " · "}{a.received && <>received {a.received}</>}</p>}
           <FieldList fields={item.fields} skip={["From", "Cc", "Steps", "Open mail", "Earlier cop", "Reference"]} />
-          {a.steps.length > 0 && (
+          {(keySteps.length > 0 ? otherSteps : a.steps.map((text, i) => ({ n: i + 1, text }))).length > 0 && (
             <>
-              <p className="eyebrow" style={{ marginTop: 10 }}>Steps</p>
-              <ol className="steps">{a.steps.map((s, i) => <li key={i}>{s}</li>)}</ol>
+              <p className="eyebrow" style={{ marginTop: 10 }}>{keySteps.length > 0 ? "Good to know" : "Steps"}</p>
+              <ol className="steps">
+                {(keySteps.length > 0 ? otherSteps : a.steps.map((text, i) => ({ n: i + 1, text }))).map((st) => <li key={st.n} value={st.n}>{st.text}</li>)}
+              </ol>
             </>
           )}
         </div>
       </details>
-      <LinkList links={item.links} />
+      {!compact && <LinkChips links={item.links} />}
+      <div className="actions-row done-row">
+        <button className={`btn done-btn${done ? " on" : ""}`} type="button" aria-pressed={done} onClick={toggleDone}>
+          {Icon.check()} {done ? "Done · tap to undo" : "Mark as done"}
+        </button>
+        {compact && <button className="btn quiet" type="button" onClick={() => goTab("mail")}>{Icon.mail()} {item.links.length} link{item.links.length === 1 ? "" : "s"}</button>}
+      </div>
+    </article>
+  );
+}
+
+/* ---------- calendar ---------- */
+function CalendarCard({ item, ctx }: { item: Item; ctx: Ctx }) {
+  const st = parseCalendarStatus(item.lines);
+  if (!st.recognized) return <GenericCard item={item} ctx={ctx} />;
+  const rows: { label: string; value: string | null; icon: () => ReactNode; unreported?: boolean }[] = [
+    { label: "Meetings", value: st.meetings, icon: Icon.calendar },
+    { label: "Interviews", value: st.interviews, icon: Icon.briefcase, unreported: !st.interviewsReported },
+    { label: "On call", value: st.onCall, icon: Icon.pin },
+    { label: "RSVP needed", value: st.rsvp, icon: Icon.mail },
+  ];
+  const busy = rows.filter((r) => r.value).length;
+  const link = item.links.find((l) => /calendar/i.test(l.label ?? "") || /calendar/i.test(l.url)) ?? item.links[0];
+  return (
+    <article className="card cal fade-in">
+      <div className="card-top">
+        <div className="grow">
+          <div className={`cal-hero${busy ? " busy" : ""}`}>
+            <span className="cal-badge">{busy ? Icon.calendar() : Icon.check()}</span>
+            <div>
+              <h3>{busy ? `${busy} thing${busy === 1 ? "" : "s"} on your plate` : "All clear"}</h3>
+              <p className="sub" style={{ marginTop: 2 }}>{busy ? "Check the details below." : "No meetings, not on call, no invites to answer."}</p>
+            </div>
+          </div>
+        </div>
+        <PageRef page={item.page} pdfUrl={ctx.pdfUrl} />
+      </div>
+      <ul className="cal-rows">
+        {rows.map((r) => (
+          <li key={r.label} className={`${r.value ? "on" : ""}${r.unreported ? " unreported" : ""}`}>
+            <span className="cal-ico">{r.icon()}</span>
+            <span className="cal-label">{r.label}</span>
+            <span className="cal-value">{r.unreported ? "Not in this briefing" : r.value ?? "None"}</span>
+          </li>
+        ))}
+      </ul>
+      {(st.checked || link) && (
+        <div className="cal-foot">
+          {link && <a className="btn quiet" href={link.url} target="_blank" rel="noreferrer">{Icon.open()} Open calendar</a>}
+          {link && <CopyButton url={link.url} label="Copy calendar link" />}
+        </div>
+      )}
+      {st.checked && (
+        <details className="cal-checked">
+          <summary className="btn ghost sm">What was checked {Icon.chev()}</summary>
+          <p className="body">{st.checked}</p>
+        </details>
+      )}
     </article>
   );
 }
@@ -90,21 +175,43 @@ function GenericCard({ item, ctx, title }: { item: Item; ctx: Ctx; title?: strin
 }
 
 /* ---------- glance ---------- */
+const GLANCE_TARGET: Record<string, { tab: string; icon: () => ReactNode }> = {
+  mail: { tab: "mail", icon: Icon.mail },
+  calendar: { tab: "today", icon: Icon.calendar },
+  slack: { tab: "today", icon: Icon.bell },
+  headlines: { tab: "news", icon: Icon.news },
+  question: { tab: "learn", icon: Icon.learn },
+  job: { tab: "learn", icon: Icon.briefcase },
+};
+
+function goTab(tab: string) {
+  const query = /\?.*$/.exec(location.hash)?.[0] ?? "";
+  location.hash = `#/${tab}${query}`;
+}
+
+/** The summary table as tappable tiles that open the matching tab. */
 function GlanceItem({ item, ctx }: { item: Item; ctx: Ctx }) {
   const table = item.tables[0];
   if (!table) return <GenericCard item={item} ctx={ctx} />;
   return (
-    <article className="card fade-in">
-      <div className="card-top"><div className="grow"><h3>At a glance</h3></div><PageRef page={item.page} pdfUrl={ctx.pdfUrl} /></div>
-      <dl className="fields" style={{ marginTop: 12 }}>
-        {table.rows.map((row, i) => (
-          <div key={i} style={{ display: "contents" }}>
-            <dt>{row[0]?.text}</dt>
-            <dd>{row.slice(1).map((c) => c.text).join(" ")}</dd>
-          </div>
-        ))}
-      </dl>
-    </article>
+    <div className="tiles fade-in">
+      {table.rows.map((row, i) => {
+        const label = row[0]?.text ?? "";
+        const target = GLANCE_TARGET[label.toLowerCase()];
+        const text = row.slice(1).map((c) => c.text).join(" ");
+        const urgent = /action item/i.test(text);
+        const inner = (
+          <>
+            <span className="tile-icon">{target ? target.icon() : null}</span>
+            <span className="tile-label">{label}</span>
+            <span className="tile-text">{text}</span>
+          </>
+        );
+        return target && target.tab !== "today"
+          ? <button key={i} type="button" className={`tile${urgent ? " urgent" : ""}`} onClick={() => goTab(target.tab)}>{inner}</button>
+          : <div key={i} className="tile">{inner}</div>;
+      })}
+    </div>
   );
 }
 
@@ -200,10 +307,12 @@ function JobsTable({ item, ctx }: { item: Item; ctx: Ctx }) {
 }
 
 /* ---------- dispatch ---------- */
-export function ItemView({ item, ctx }: { item: Item; ctx: Ctx }) {
+export function ItemView({ item, ctx, compact = false }: { item: Item; ctx: Ctx; compact?: boolean }) {
   switch (item.kind) {
-    case "action": return <ActionCard item={item} ctx={ctx} />;
+    case "action": return <ActionCard item={item} ctx={ctx} compact={compact} />;
     case "glance": return <GlanceItem item={item} ctx={ctx} />;
+    case "calendar": return <CalendarCard item={item} ctx={ctx} />;
+    case "mention": return <div className="mlist"><MentionRow item={item} now={ctx.now} pdfUrl={ctx.pdfUrl} /></div>;
     case "headline": return <HeadlineCard item={item} ctx={ctx} />;
     case "question": return <QuestionCard item={item} ctx={ctx} />;
     case "job": return <JobCard item={item} ctx={ctx} />;

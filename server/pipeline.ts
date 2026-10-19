@@ -15,6 +15,8 @@ export interface PipelineDeps {
   store: Store;
   ocr: OcrEngine | null;
   now?: () => Date;
+  /** Fetches a remote headline image; defaults to the global fetch. Injected in tests. */
+  fetchImage?: (url: string) => Promise<{ bytes: Uint8Array; type: string } | null>;
   /** How long a folder listing is reused before Drive is asked again (ms). */
   listingTtlMs?: number;
 }
@@ -252,6 +254,7 @@ export class Pipeline {
       imageUrl: (id) => `/api/images/${id}.png`,
       pdfUrl: `/api/documents/${encodeURIComponent(meta.key)}/pdf`,
     });
+    await this.attachRemoteImages(briefing);
     this.deps.store.putResult(
       {
         key: meta.key,
@@ -267,6 +270,33 @@ export class Pipeline {
       briefing,
     );
     return briefing;
+  }
+
+  /**
+   * A headline card without an embedded picture may still print "Image: <https url>" (the routine
+   * keeps its PDF small by not embedding pictures). Fetch it once, keep it in the local store and
+   * serve it like any embedded image, so the UI and offline mode need no special case.
+   */
+  private async attachRemoteImages(briefing: Briefing): Promise<void> {
+    const fetchImage = this.deps.fetchImage ?? defaultFetchImage;
+    const missing = new Set<string>();
+    for (const section of briefing.sections) {
+      if (section.kind !== "headlines") continue;
+      for (const item of section.items) {
+        if (item.kind !== "headline" || item.images.length > 0) continue;
+        const url = /https:\/\/[^\s]+/.exec(item.fields.find((f) => /^image$/i.test(f.label))?.text ?? "")?.[0];
+        if (!url || !isPublicHttps(url)) continue;
+        const got = await fetchImage(url).catch(() => null);
+        if (!got) continue;
+        const id = sha256(new TextEncoder().encode(url)).slice(0, 40);
+        this.deps.store.putImage(id, got.bytes);
+        item.images.push({ id, page: item.page, width: 0, height: 0, url: `/api/images/${id}.png`, bbox: { x: 0, y: 0, w: 0, h: 0 } });
+        missing.add(item.title ?? "");
+      }
+    }
+    if (missing.size) {
+      briefing.notes = briefing.notes.filter((n) => !(n.code === "headline_without_image" && [...missing].some((t) => t && n.message.includes(`"${t}"`))));
+    }
   }
 
   private emptyResponse(date: string): BriefingResponse {
@@ -292,4 +322,25 @@ export class Pipeline {
     else base.error = { code: "unexpected", message: (err as Error).message ?? String(err), retryable: true };
     return base;
   }
+}
+
+const MAX_IMAGE_BYTES = 600_000;
+
+/** https only, and never a literal IP address or localhost: the URL comes from a PDF. */
+export function isPublicHttps(raw: string): boolean {
+  try {
+    const u = new URL(raw);
+    const host = u.hostname;
+    return u.protocol === "https:" && !/^[\d.]+$/.test(host) && !host.includes(":") && host !== "localhost" && !host.endsWith(".local");
+  } catch {
+    return false;
+  }
+}
+
+async function defaultFetchImage(url: string): Promise<{ bytes: Uint8Array; type: string } | null> {
+  const res = await fetch(url, { signal: AbortSignal.timeout(8000), headers: { "user-agent": "Mozilla/5.0 OFD" } });
+  const type = res.headers.get("content-type") ?? "";
+  if (!res.ok || !type.startsWith("image/")) return null;
+  const bytes = new Uint8Array(await res.arrayBuffer());
+  return bytes.length > 0 && bytes.length <= MAX_IMAGE_BYTES ? { bytes, type } : null;
 }

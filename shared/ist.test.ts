@@ -84,3 +84,45 @@ describe("countdownIST", () => {
     expect(countdownIST("2026-10-19", new Date("2026-10-19T18:30:00Z")).state).toBe("overdue");
   });
 });
+
+import { greetingIST, nameFromGreetingTitle } from "./ist.ts";
+
+describe("greetingIST", () => {
+  const at = (iso: string) => greetingIST(new Date(iso));
+  it("follows the IST hour, not UTC", () => {
+    expect(at("2026-10-19T00:00:00Z")).toBe("Good morning"); // 05:30 IST
+    expect(at("2026-10-18T23:29:00Z")).toBe("Good night"); // 04:59 IST
+    expect(at("2026-10-19T06:29:00Z")).toBe("Good morning"); // 11:59 IST
+    expect(at("2026-10-19T06:30:00Z")).toBe("Good afternoon"); // 12:00 IST
+    expect(at("2026-10-19T11:29:00Z")).toBe("Good afternoon"); // 16:59 IST
+    expect(at("2026-10-19T11:30:00Z")).toBe("Good evening"); // 17:00 IST
+    expect(at("2026-10-19T15:29:00Z")).toBe("Good evening"); // 20:59 IST
+    expect(at("2026-10-19T15:30:00Z")).toBe("Good night"); // 21:00 IST
+  });
+});
+
+describe("nameFromGreetingTitle", () => {
+  it("pulls the name out of the document title", () => {
+    expect(nameFromGreetingTitle("Good morning, Abhishek ☀️")).toBe("Abhishek");
+    expect(nameFromGreetingTitle("Good morning, Sample ☀️")).toBe("Sample");
+    expect(nameFromGreetingTitle("Briefing")).toBeNull();
+  });
+});
+
+import { timeAgo } from "./ist.ts";
+
+describe("timeAgo", () => {
+  const now = new Date("2026-10-19T12:00:00Z"); // 17:30 IST on 19 Oct
+  const ago = (iso: string) => timeAgo(new Date(iso), now);
+  it("uses minutes, hours, yesterday, days and a date", () => {
+    expect(ago("2026-10-19T11:59:40Z")).toBe("just now");
+    expect(ago("2026-10-19T11:48:00Z")).toBe("12 min ago");
+    expect(ago("2026-10-19T09:00:00Z")).toBe("3 h ago");
+    expect(ago("2026-10-18T09:00:00Z")).toBe("yesterday");
+    expect(ago("2026-10-16T09:00:00Z")).toBe("3 d ago");
+    expect(ago("2026-10-01T09:00:00Z")).toBe("1 Oct 2026");
+  });
+  it("treats future times as just now", () => {
+    expect(ago("2026-10-19T13:00:00Z")).toBe("just now");
+  });
+});

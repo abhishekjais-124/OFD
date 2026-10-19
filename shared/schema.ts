@@ -52,7 +52,7 @@ export type Field = z.infer<typeof fieldSchema>;
 
 export const itemKindSchema = z.enum([
   "action", "mail", "github", "share", "alerts", "glance", "calendar", "headline",
-  "question", "job", "jobs", "routine", "table", "paragraph", "note",
+  "question", "job", "jobs", "routine", "table", "paragraph", "note", "mention",
 ]);
 export type ItemKind = z.infer<typeof itemKindSchema>;
 
@@ -101,6 +101,18 @@ export const jobSchema = z.object({
 });
 export type JobDetails = z.infer<typeof jobSchema>;
 
+export const mentionSchema = z.object({
+  from: z.string(),
+  /** Channel such as "#apollo-dev", or "DM". */
+  where: z.string().optional(),
+  text: z.string(),
+  timeText: z.string().optional(),
+  /** ISO instant when the time could be parsed. */
+  timestamp: z.string().nullable(),
+  url: z.string().nullable(),
+});
+export type MentionDetails = z.infer<typeof mentionSchema>;
+
 export const itemSchema = z.object({
   id: z.string().min(1),
   kind: itemKindSchema,
@@ -118,11 +130,12 @@ export const itemSchema = z.object({
   headline: headlineSchema.optional(),
   question: questionSchema.optional(),
   job: jobSchema.optional(),
+  mention: mentionSchema.optional(),
 });
 export type Item = z.infer<typeof itemSchema>;
 
 export const sectionKindSchema = z.enum([
-  "glance", "mail", "calendar", "headlines", "question", "job", "routine", "unknown",
+  "glance", "mail", "calendar", "slack", "headlines", "question", "job", "routine", "unknown",
 ]);
 export type SectionKind = z.infer<typeof sectionKindSchema>;
 
@@ -203,4 +216,22 @@ export interface StatusResponse {
   parserVersion: string;
   todayIST: string;
   ocrEnabled: boolean;
+}
+
+export type Sky = "clear" | "partly" | "cloudy" | "fog" | "drizzle" | "rain" | "snow" | "thunder";
+
+/** What GET /api/weather returns. Temperatures are in degrees Celsius, wind in km/h. */
+export interface WeatherResponse {
+  sky: Sky;
+  isDay: boolean;
+  label: string;
+  tempC: number;
+  feelsC: number;
+  highC: number | null;
+  lowC: number | null;
+  windKph: number;
+  humidity: number;
+  place: string | null;
+  /** ISO instant the observation was fetched on the server. */
+  fetchedAt: string;
 }

@@ -18,6 +18,18 @@ export const Icon = {
   chev: () => <svg viewBox="0 0 24 24" {...p} className="chev"><path d="M6 9l6 6 6-6" /></svg>,
   offline: () => <svg viewBox="0 0 24 24" {...p}><path d="M3 3l18 18M8.5 16.5a5 5 0 0 1 7-7M5 12.5A10 10 0 0 1 8 9.5M12 20h.01M19 12.5a10 10 0 0 0-2.5-2.4" /></svg>,
   warn: () => <svg viewBox="0 0 24 24" {...p}><path d="M12 3l10 18H2L12 3zM12 10v4M12 17.5h.01" /></svg>,
+  home: () => <svg viewBox="0 0 24 24" {...p}><path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z" /></svg>,
+  mail: () => <svg viewBox="0 0 24 24" {...p}><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 7l9 6 9-6" /></svg>,
+  news: () => <svg viewBox="0 0 24 24" {...p}><path d="M5 4h11a1 1 0 0 1 1 1v14H6a2 2 0 0 1-2-2V5a1 1 0 0 1 1-1zM17 8h3v9a2 2 0 0 1-2 2M8 8h6M8 12h6M8 15h4" /></svg>,
+  learn: () => <svg viewBox="0 0 24 24" {...p}><path d="M12 3l9 4.5-9 4.5-9-4.5zM7 10.5v5c0 1.2 2.2 2.5 5 2.5s5-1.3 5-2.5v-5" /></svg>,
+  more: () => <svg viewBox="0 0 24 24" {...p}><circle cx="5" cy="12" r="1.2" /><circle cx="12" cy="12" r="1.2" /><circle cx="19" cy="12" r="1.2" /></svg>,
+  calendar: () => <svg viewBox="0 0 24 24" {...p}><rect x="3.5" y="5" width="17" height="15" rx="2.5" /><path d="M8 3v4M16 3v4M3.5 10h17" /></svg>,
+  briefcase: () => <svg viewBox="0 0 24 24" {...p}><rect x="3" y="7" width="18" height="13" rx="2.5" /><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M3 13h18" /></svg>,
+  pin: () => <svg viewBox="0 0 24 24" {...p}><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></svg>,
+  branch: () => <svg viewBox="0 0 24 24" {...p}><circle cx="6" cy="5.5" r="2.2" /><circle cx="6" cy="18.5" r="2.2" /><circle cx="18" cy="9" r="2.2" /><path d="M6 7.7v8.6M18 11.2c0 3.6-6 2.4-11 5.4" /></svg>,
+  folder: () => <svg viewBox="0 0 24 24" {...p}><path d="M3.5 6.5a1.5 1.5 0 0 1 1.5-1.5h4l2 2.2h8a1.5 1.5 0 0 1 1.5 1.5v8.8a1.5 1.5 0 0 1-1.5 1.5H5a1.5 1.5 0 0 1-1.5-1.5z" /></svg>,
+  bell: () => <svg viewBox="0 0 24 24" {...p}><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 1.5h-15zM10 20.5a2 2 0 0 0 4 0" /></svg>,
+  back: () => <svg viewBox="0 0 24 24" {...p}><path d="M15 5l-7 7 7 7" /></svg>,
   check: () => <svg viewBox="0 0 24 24" {...p}><path d="M5 12l4 4L19 7" /></svg>,
 };
 
@@ -111,6 +123,15 @@ export function LinkRow({ link, truncate = false }: { link: Link; truncate?: boo
   );
 }
 
+export function CopyButton({ url, label }: { url: string; label: string }) {
+  const toast = useToast();
+  return (
+    <button className="btn icon" type="button" aria-label={label} title={label} onClick={async () => toast((await copyText(url)) ? "Copied link" : "Copy failed")}>
+      {Icon.copy()}
+    </button>
+  );
+}
+
 export function hostOf(url: string): string {
   try {
     return new URL(url).hostname.replace(/^www\./, "");
@@ -174,4 +195,23 @@ export function DataTable({ table, highlight }: { table: Table; highlight?: (row
 
 export function Chip({ children, tone, title }: { children: ReactNode; tone?: "accent" | "warn" | "danger" | "ok" | "quiet"; title?: string }) {
   return <span className={`chip${tone ? ` ${tone}` : ""}`} title={title}>{children}</span>;
+}
+
+/** Links as small pills: tap the label to open, tap the icon to copy. The full address is in the tooltip. */
+export function LinkChips({ links }: { links: Link[] }) {
+  const toast = useToast();
+  if (!links.length) return null;
+  return (
+    <div className="lchips">
+      {links.map((l, i) => {
+        const name = l.label && l.label !== hostOf(l.url) ? l.label : hostOf(l.url);
+        return (
+          <span className={`lchip${l.confidence === "low" ? " low" : ""}`} key={`${l.url}-${i}`}>
+            <a href={l.url} target="_blank" rel="noreferrer" title={l.url}><span className="lchip-name">{name}</span>{Icon.open()}</a>
+            <button type="button" aria-label={`Copy ${name}`} title="Copy link" onClick={async () => toast((await copyText(l.url)) ? "Copied link" : "Copy failed")}>{Icon.copy()}</button>
+          </span>
+        );
+      })}
+    </div>
+  );
 }
