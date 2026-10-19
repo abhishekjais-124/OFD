@@ -108,7 +108,9 @@ work mail and are not committed. Tests cover IST date selection around midnight,
 (missing, duplicate, wrong-date and near-miss names), extraction of text, links and images,
 corrupted, password-protected and scanned input with and without OCR, normalization of every
 section, cache hits, refresh, reprocess, parser-version invalidation, the HTTP API and the
-service worker's offline strategies.
+service worker's offline strategies. `npm run check:offline` (after `npm run build` and
+`OFD_API_PORT=8791 npm start`) drives headless Chrome through a real service worker, goes offline
+and checks that the briefing and the offline banner still render.
 
 ## Troubleshooting
 

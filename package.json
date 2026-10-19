@@ -16,7 +16,8 @@
     "lint": "tsc -p tsconfig.json --noEmit",
     "drive:auth": "node scripts/drive-auth.mjs",
     "fixtures": "node scripts/make-fixtures.mjs",
-    "icons": "node scripts/make-icons.mjs"
+    "icons": "node scripts/make-icons.mjs",
+    "check:offline": "node scripts/check-offline.mjs"
   },
   "engines": {
     "node": ">=20"
