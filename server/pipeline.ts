@@ -218,8 +218,9 @@ export class Pipeline {
       }
       bytes = dl.bytes;
       this.deps.store.putPdf(key, bytes);
-    } else if (opts.reprocess && entry && (file.modifiedTime === null || entry.modifiedTime === file.modifiedTime)) {
-      downloaded = { ...file, modifiedTime: entry.modifiedTime };
+    } else if (entry) {
+      // not downloaded again: the cached PDF is the version recorded in the store
+      downloaded = { ...file, modifiedTime: file.modifiedTime ?? entry.modifiedTime };
     }
 
     const briefing = await this.run(bytes!, {
