@@ -41,13 +41,13 @@ function ActionCard({ item, ctx, compact = false }: { item: Item; ctx: Ctx; comp
             <Flags flags={item.flags} />
           </div>
           <h3>{item.title}</h3>
-          {(a.from || a.received) && <p className="sub">{a.from && <>From {a.from}</>}{a.from && a.received && " · "}{a.received && <>received {a.received}</>}</p>}
         </div>
         <PageRef page={item.page} pdfUrl={ctx.pdfUrl} />
       </div>
       <details>
         <summary className="btn ghost sm" style={{ marginTop: 8 }}>Details {Icon.chev()}</summary>
         <div className="body">
+          {(a.from || a.received) && <p className="sub" style={{ marginTop: 0 }}>{a.from && <>From {a.from}</>}{a.from && a.received && " · "}{a.received && <>received {a.received}</>}</p>}
           <FieldList fields={item.fields} skip={["From", "Cc", "Steps", "Open mail", "Earlier cop", "Reference"]} />
           {a.steps.length > 0 && (
             <>

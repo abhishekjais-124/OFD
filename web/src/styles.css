@@ -497,3 +497,4 @@ body { background: var(--bg) radial-gradient(900px 420px at 50% -120px, var(--gl
 .wx-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 13px; color: rgba(255, 255, 255, 0.78); line-height: 1.35; }
 .wx-meta strong { font-size: 15px; color: #fff; font-weight: 650; }
 .wx-ask { flex-wrap: wrap; gap: 8px 12px; color: var(--text-2); }
+details[open] > summary .chev { transform: rotate(180deg); }
