@@ -101,7 +101,7 @@ function CalendarCard({ item, ctx }: { item: Item; ctx: Ctx }) {
       </ul>
       {(st.checked || link) && (
         <div className="cal-foot">
-          {link && <a className="btn primary" href={link.url} target="_blank" rel="noreferrer">{Icon.open()} Open calendar</a>}
+          {link && <a className="btn quiet" href={link.url} target="_blank" rel="noreferrer">{Icon.open()} Open calendar</a>}
           {link && <CopyButton url={link.url} label="Copy calendar link" />}
         </div>
       )}

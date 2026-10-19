@@ -516,6 +516,11 @@ details[open] > summary .chev { transform: rotate(180deg); }
 .cal-value { grid-area: value; font-size: 15.5px; font-weight: 600; color: var(--text-2); overflow-wrap: anywhere; }
 .cal-rows li.on .cal-value { color: var(--text); }
 .cal-foot { display: flex; gap: 8px; margin-top: 14px; }
-.cal-foot .btn.primary { flex: 1; }
+.cal-foot .btn.quiet { flex: 1; }
 .cal-checked { margin-top: 6px; }
 .cal-checked .body { margin-top: 6px; font-size: 13.5px; color: var(--text-2); }
+
+/* quiet button: low emphasis, no fill or glow */
+.btn.quiet { background: transparent; border: 1px solid var(--border-strong); color: var(--text-2); font-weight: 600; box-shadow: none; }
+.btn.quiet:hover { background: var(--surface-2); color: var(--text); }
+.cal-foot .btn.icon { background: transparent; color: var(--text-2); }
