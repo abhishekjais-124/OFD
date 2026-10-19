@@ -49,7 +49,7 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const refreshToken = blank(env.GOOGLE_OAUTH_REFRESH_TOKEN);
   const authMode = (blank(env.DRIVE_AUTH) ?? "auto") as DriveAuthMode;
   return {
-    port: Number(env.OFD_API_PORT ?? 8787),
+    port: Number(env.OFD_API_PORT ?? env.PORT ?? 8787),
     cacheDir: path.resolve(env.OFD_CACHE_DIR ?? ".cache"),
     ocrEnabled: (env.OFD_OCR ?? "1") !== "0",
     drive: {
