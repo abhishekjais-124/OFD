@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>brief.html</title>
+<style>
+  body { font-family: Helvetica, Arial, sans-serif; color: #111; margin: 0; padding: 24px 0; font-size: 12px; }
+  h1 { font-size: 24px; margin: 0 0 8px; }
+  .meta { color: #333; font-size: 12px; margin: 0 0 6px; }
+  .tiny { color: #666; font-size: 10px; margin: 0 0 18px; }
+  h2 { font-size: 16px; margin: 22px 0 12px; padding: 8px 12px; background: #eef2f7; border-left: 4px solid #2f6fed; }
+  h3 { font-size: 12px; margin: 16px 0 6px; }
+  .card { border: 1px solid #d9dde3; border-radius: 8px; padding: 10px 12px; margin: 0 0 12px; font-size: 12px; line-height: 1.5; }
+  .card.action { border-color: #d9dde3; }
+  .important { color: #b3261e; font-weight: bold; }
+  table { border-collapse: collapse; width: 100%; margin: 0 0 12px; font-size: 16px; }
+  th, td { border: 1px solid #d9dde3; padding: 6px 8px; text-align: left; vertical-align: top; }
+  th { background: #f3f5f8; }
+  a { color: #1a56db; }
+  .headline { display: flex; gap: 12px; border: 1px solid #d9dde3; border-radius: 8px; padding: 10px; margin: 0 0 12px; }
+  .headline img { width: 150px; height: 84px; object-fit: cover; border-radius: 4px; flex: none; }
+  .headline .t { font-weight: bold; font-size: 12px; }
+  .headline .s { font-size: 12px; }
+  .headline .d { color: #666; font-size: 11px; }
+  .badge { display: inline-block; background: #2f6fed; color: #fff; font-size: 9px; padding: 1px 4px; border-radius: 3px; font-weight: bold; }
+  .pill { display: inline-block; background: #2f6fed; color: #fff; font-size: 10px; padding: 1px 6px; border-radius: 3px; }
+  .note { color: #666; font-size: 10px; }
+  code { font-family: Menlo, monospace; font-size: 11px; }
+</style>
+</head>
+<body>
+<h1>Good morning, Sample ☀️</h1>
+<p class="meta">Thursday, 15 January 2026 · IST · Mailbox: sample@example.com</p>
+<p class="tiny">Every source link is printed in full so it can be copied from this PDF.</p>
+
+<h2>At a glance</h2>
+<table>
+  <tr><th>Area</th><th>Status</th></tr>
+  <tr><td>Mail</td><td><span class="important">1 action item:</span> expense report due <b>17 Jan 2026 EOD</b>. 1 PR merged. The rest is alert noise.</td></tr>
+  <tr><td>Calendar</td><td>One meeting today at 11:00 AM IST. Not on call. No pending invites in the next 7 days.</td></tr>
+  <tr><td>Headlines</td><td>3 world and 2 India stories below, with images and links.</td></tr>
+  <tr><td>Question</td><td>LeetCode 1 · Two Sum · Easy · Hash Table</td></tr>
+  <tr><td>Job</td><td>Example Corp · Backend Engineer · Bengaluru (plus 2 other options)</td></tr>
+</table>
+
+<h2>Mail</h2>
+<div class="card action">
+  <div class="important">IMPORTANT · ACTION NEEDED BY 17 JAN 2026, EOD</div>
+  <b>Expense report for December must be filed before payroll closes</b><br>
+  From: Finance Team (Example Corp) &lt;finance@example.com&gt; · Cc: manager@example.com · Received 15 Jan 2026, 9:02 AM IST (earlier copy on 14 Jan).<br>
+  <b>Why:</b> the expense tool closes the December window on 17 January, so anything not filed by then rolls to the next cycle.<br>
+  <b>Steps:</b>
+  <ol>
+    <li>Collect receipts for every claim in the <b>expense portal</b>.</li>
+    <li>Submit the report and get approval from your reporting manager.</li>
+    <li>All approvals must be completed by <b>17 January 2026, EOD</b>. <b>Late claims are not accepted after the deadline.</b></li>
+  </ol>
+  Reference sheet shared by Finance:<br>
+  <a href="https://docs.example.com/spreadsheets/d/EXAMPLE-SHEET-ID/edit?usp=sharing">https://docs.example.com/spreadsheets/d/EXAMPLE-SHEET-ID/edit?usp=sharing</a><br>
+  Open mail (15 Jan):<br>
+  <a href="https://mail.example.com/mail/?authuser=sample@example.com#all/thread-f:1000000000000000001">https://mail.example.com/mail/?authuser=sample@example.com#all/thread-f:1000000000000000001</a><br>
+  Earlier copy: 14 Jan <a href="https://mail.example.com/mail/?authuser=sample@example.com#all/thread-f:1000000000000000002">https://mail.example.com/mail/?authuser=sample@example.com#all/thread-f:1000000000000000002</a>
+</div>
+<div class="card">
+  <b>GitHub · [example-org/widgets] PROD PR #42 · merged into master</b><br>
+  Today: @alice pushed commit abc1234 <i>"fix: handle empty carts (#43)"</i>; @bob approved; PR merged into master.<br>
+  PR: <a href="https://github.com/example-org/widgets/pull/42">https://github.com/example-org/widgets/pull/42</a><br>
+  Hotfix PR: <a href="https://github.com/example-org/widgets/pull/43">https://github.com/example-org/widgets/pull/43</a><br>
+  Mail: <a href="https://mail.example.com/mail/?authuser=sample@example.com#all/thread-f:1000000000000000003">https://mail.example.com/mail/?authuser=sample@example.com#all/thread-f:1000000000000000003</a>
+</div>
+<div class="card">
+  <b>Google Drive · Folder shared with you: "Routines"</b> (shared by Sample Owner, owner@example.com, outside your organization)<br>
+  Folder: <a href="https://drive.google.com/drive/folders/EXAMPLE-FOLDER-ID">https://drive.google.com/drive/folders/EXAMPLE-FOLDER-ID</a>
+</div>
+<h3>Automated alerts (low priority, unread)</h3>
+<table>
+  <tr><th>Alert</th><th>Detail</th><th>Mail</th></tr>
+  <tr><td>Sentry GO-1AAA</td><td>*errors.errorString: context canceled · ongoing, 12 notifications, latest 15 Jan 05:10 AM IST</td><td><a href="https://mail.example.com/mail/?authuser=sample@example.com#all/thread-f:1000000000000000004">https://mail.example.com/mail/?authuser=sample@example.com#all/thread-f:1000000000000000004</a></td></tr>
+  <tr><td>Sentry GO-1BBB</td><td>cart-home: locked item unexpectedly unlocked for user · ongoing, latest 14 Jan 5:58 PM IST</td><td><a href="https://mail.example.com/mail/?authuser=sample@example.com#all/thread-f:1000000000000000005">https://mail.example.com/mail/?authuser=sample@example.com#all/thread-f:1000000000000000005</a></td></tr>
+  <tr><td>Postman</td><td>Marketing: 7-day free trial of paid sharing features</td><td>(ignore)</td></tr>
+</table>
+
+<h2>Calendar &amp; invites</h2>
+<div class="card">
+  Checked: today 15 Jan and tomorrow 16 Jan (IST) on sample@example.com, the next 7 days (15 to 21 Jan) for pending invites, and the "on call shifts" calendar.<br>
+  <b>Meetings:</b> Team sync, 11:00 to 11:30 AM IST. <b>On call:</b> none. <b>RSVP needed:</b> none.<br>
+  Calendar: <a href="https://calendar.example.com/calendar/u/0/r/week/2026/1/15">https://calendar.example.com/calendar/u/0/r/week/2026/1/15</a>
+</div>
+
+<h2>World headlines (Example News)</h2>
+<div class="headline"><img src="{{IMG1}}" alt=""><div><div class="t">Coastal city votes on new harbour plan after years of debate</div><div class="s">Residents will decide whether the port expansion goes ahead, a project that has divided the town.</div><div class="d">Thu, 15 Jan 2026 07:46:54 UTC · Example News</div><a href="https://news.example.com/articles/world-001">https://news.example.com/articles/world-001</a></div></div>
+<div class="headline"><img src="{{IMG2}}" alt=""><div><div class="t">Scientists map the deepest known cave system in the Alps</div><div class="s">A four-year survey reveals passages more than two kilometres below the surface.</div><div class="d">Thu, 15 Jan 2026 00:06:25 UTC · Example News</div><a href="https://news.example.com/articles/world-002">https://news.example.com/articles/world-002</a></div></div>
+<div class="headline"><img src="{{IMG3}}" alt=""><div><div class="t">Regional airline adds overnight routes as demand recovers</div><div class="s">Three new routes start in March, the carrier said on Wednesday.</div><div class="d">Wed, 14 Jan 2026 23:20:15 UTC · Example News</div><a href="https://news.example.com/articles/world-003">https://news.example.com/articles/world-003</a></div></div>
+
+<h2>India headlines (Example News)</h2>
+<div class="headline"><img src="{{IMG4}}" alt=""><div><div class="t">Monsoon forecast points to an early arrival over Kerala</div><div class="s">Forecasters expect the rains to reach the coast a week ahead of the usual date.</div><div class="d">Thu, 15 Jan 2026 07:35:06 UTC · Example News</div><a href="https://news.example.com/articles/india-001">https://news.example.com/articles/india-001</a></div></div>
+<div class="headline"><img src="{{IMG5}}" alt=""><div><div class="t">Bengaluru metro extension opens to the public</div><div class="s">The new line connects the airport with the city centre in under an hour.</div><div class="d">Tue, 13 Jan 2026 19:19:16 UTC · Example News</div><a href="https://news.example.com/articles/india-002">https://news.example.com/articles/india-002</a></div></div>
+<p class="note">Feeds: <a href="https://news.example.com/world/rss.xml">https://news.example.com/world/rss.xml</a> · <a href="https://news.example.com/india/rss.xml">https://news.example.com/india/rss.xml</a>. Other feeds could not be fetched.</p>
+
+<h2>Question of the day</h2>
+<div class="card">
+  <b>1. Two Sum</b> · <span class="pill">Easy</span><br>
+  Problem: <a href="https://leetcode.com/problems/two-sum/">https://leetcode.com/problems/two-sum/</a><br>
+  <b>In simple words:</b> You get a list of numbers and a target. Find the two positions whose numbers add up to the target.<br>
+  <b>Example:</b> Input: <code>nums = [2,7,11,15], target = 9</code> → Output: <code>[0,1]</code> (2 + 7 = 9). Another: <code>[3,2,4], 6</code> → <code>[1,2]</code>.<br>
+  <b>Constraints (from a mirror; confirm on LeetCode):</b> 2 ≤ length ≤ 10^4, exactly one valid answer.<br>
+  <b>Topics:</b> Array, Hash Table · <b>Companies:</b> Example Corp, Sample Inc · <b>Why today:</b> day 15 of the year, so the topic rotation lands on Hash Table.<br>
+  Study guide (hash maps): <a href="https://leetcode.com/discuss/study-guide/000/hash-map-guide">https://leetcode.com/discuss/study-guide/000/hash-map-guide</a><br>
+  Full problem list: <a href="https://leetcode.com/problemset/">https://leetcode.com/problemset/</a>
+</div>
+
+<h2>Job of the day · Example Careers</h2>
+<div class="card">
+  <b>Backend Engineer</b> · Bengaluru, Karnataka, India · posted about 2 days ago (around 13 Jan 2026)<br>
+  Apply / details: <a href="https://careers.example.com/jobs/results/1001">https://careers.example.com/jobs/results/1001</a><br>
+  <b>Minimum qualifications:</b> Bachelor's degree or equivalent practical experience · 3 years of software development in one or more programming languages · 2 years with distributed systems.<br>
+  <b>Why it fits you:</b> backend engineer with Go and MySQL on a consumer app; distributed systems match your background.
+</div>
+<h3>Other recent Example India roles worth a look</h3>
+<table>
+  <tr><th>Role</th><th>Location</th><th>Posted</th><th>Link</th></tr>
+  <tr><td>Backend Engineer <span class="badge">BEST MATCH</span></td><td>Bengaluru</td><td>2.1 days ago</td><td><a href="https://careers.example.com/jobs/results/1001">https://careers.example.com/jobs/results/1001</a></td></tr>
+  <tr><td>Site Reliability Engineer, Platform</td><td>Hyderabad</td><td>3.4 days ago</td><td><a href="https://careers.example.com/jobs/results/1002">https://careers.example.com/jobs/results/1002</a></td></tr>
+  <tr><td>Software Engineer II, Payments</td><td>Bengaluru</td><td>6.8 days ago</td><td><a href="https://careers.example.com/jobs/results/1003">https://careers.example.com/jobs/results/1003</a></td></tr>
+</table>
+<p class="note">Search page: <a href="https://careers.example.com/jobs/results?location=India&amp;q=backend&amp;sort_by=date">https://careers.example.com/jobs/results?location=India&amp;q=backend&amp;sort_by=date</a></p>
+
+<h2>Routine details</h2>
+<div class="card">
+  Routine "Daily morning briefing" runs daily at 9:00 AM IST. It prints the briefing as plain text.<br>
+  Reports folder: <a href="https://drive.google.com/drive/folders/EXAMPLE-FOLDER-ID">https://drive.google.com/drive/folders/EXAMPLE-FOLDER-ID</a>
+</div>
+
+<h2>Reading list</h2>
+<div class="card">
+  An extra section the parser has never seen, to check the generic fallback.<br>
+  Article: <a href="https://blog.example.com/posts/unknown-section">https://blog.example.com/posts/unknown-section</a>
+</div>
+</body>
+</html>
