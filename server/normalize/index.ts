@@ -11,6 +11,7 @@ import { validateBriefing } from "./validate.ts";
 
 export { validateBriefing, ValidationError } from "./validate.ts";
 export { layoutDocument } from "./layout.ts";
+export { normalizeBrief, isBriefText } from "./brief.ts";
 
 /** Bump when the parser output changes so cached results are reprocessed. */
 export const PARSER_VERSION = "2026.10.19-4";
@@ -27,8 +28,12 @@ export interface NormalizeInput {
 }
 
 export function normalizeBriefing(input: NormalizeInput): Briefing {
+  return buildBriefing(layoutDocument(input.extracted.pages), input);
+}
+
+/** Everything after layout: headings, sections, notes, date, validation. Shared by the PDF and the compact JSON formats. */
+export function buildBriefing(items: LayoutItem[], input: NormalizeInput): Briefing {
   const { extracted } = input;
-  const items = layoutDocument(extracted.pages);
   let counter = 0;
   const ctx: ParseContext = {
     nextId: (kind) => `${kind}-${++counter}`,

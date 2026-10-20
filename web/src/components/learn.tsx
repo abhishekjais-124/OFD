@@ -268,3 +268,62 @@ export function JobView({ items, ctx }: { items: Item[]; ctx: Ctx }) {
     </>
   );
 }
+
+const f = (item: Item, ...labels: string[]) => field(item, ...labels);
+
+function Block({ icon, label, children }: { icon: React.ReactNode; label: string; children: React.ReactNode }) {
+  return (
+    <article className="dx fade-in">
+      <p className="dx-label"><span className="dx-ico" aria-hidden="true">{icon}</span>{label}</p>
+      {children}
+    </article>
+  );
+}
+
+/** Word, fact, quote, tip, history and a riddle for the day, each as its own small card. */
+export function DailyView({ items }: { items: Item[] }) {
+  const item = items[0];
+  if (!item) return null;
+  const word = f(item, "Word");
+  const quote = f(item, "Quote");
+  const history = f(item, "History");
+  const year = history ? /^(\d{1,4}(?:\s?(?:BC|AD|BCE|CE))?)\s*[-:\u2013\u2014]\s*(.+)$/i.exec(history) : null;
+  const riddle = f(item, "Riddle");
+  const answer = f(item, "Answer");
+  return (
+    <div className="dx-stack">
+      {word && (
+        <Block icon={Icon.learn()} label="Word of the day">
+          <h2 className="dx-word">{word}</h2>
+          {f(item, "Part of speech") && <p className="dx-pos">{f(item, "Part of speech")}</p>}
+          {f(item, "Meaning") && <p className="dx-body">{f(item, "Meaning")}</p>}
+          {f(item, "Example") && <p className="dx-ex">&ldquo;{f(item, "Example")}&rdquo;</p>}
+        </Block>
+      )}
+      {f(item, "Fact") && <Block icon={Icon.bell()} label="Fact of the day"><p className="dx-body">{f(item, "Fact")}</p></Block>}
+      {quote && (
+        <Block icon={Icon.news()} label="Quote of the day">
+          <p className="dx-quote">&ldquo;{quote}&rdquo;</p>
+          {f(item, "Author") && <p className="dx-author">{f(item, "Author")}</p>}
+        </Block>
+      )}
+      {f(item, "Tip") && <Block icon={Icon.check()} label="Tip of the day"><p className="dx-body">{f(item, "Tip")}</p></Block>}
+      {history && (
+        <Block icon={Icon.calendar()} label="History of the day">
+          {year ? <><p className="dx-year">{year[1]}</p><p className="dx-body">{year[2]}</p></> : <p className="dx-body">{history}</p>}
+        </Block>
+      )}
+      {riddle && (
+        <Block icon={Icon.pin()} label="Riddle of the day">
+          <p className="dx-body">{riddle}</p>
+          {answer && (
+            <details className="dx-reveal">
+              <summary>Reveal answer</summary>
+              <p className="dx-answer">{answer}</p>
+            </details>
+          )}
+        </Block>
+      )}
+    </div>
+  );
+}

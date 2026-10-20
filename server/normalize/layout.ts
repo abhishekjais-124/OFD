@@ -251,7 +251,7 @@ function lastClause(s: string): string | undefined {
 }
 
 /** URLs printed as text that have no annotation: recovered with lower confidence. */
-function recoverTextLinks(item: LayoutItem, page: number): void {
+export function recoverTextLinks(item: LayoutItem, page: number): void {
   const known = item.links.map((l) => l.url);
   const texts = item.lines.map((l) => l.text);
   const joined = joinWrapped(texts);

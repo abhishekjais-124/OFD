@@ -1,7 +1,8 @@
 import { compareIsoDates, isIsoDate, type IsoDate } from "../../shared/ist.ts";
 import type { DriveFile } from "./types.ts";
 
-export const BRIEFING_NAME_RE = /^Morning-Briefing-(\d{4}-\d{2}-\d{2})\.pdf$/i;
+/** The compact .json format is preferred; the .pdf is still read when it is all there is. */
+export const BRIEFING_NAME_RE = /^Morning-Briefing-(\d{4}-\d{2}-\d{2})\.(?:pdf|json)$/i;
 
 /** Date encoded in a briefing file name, or null when the name does not follow the pattern. */
 export function dateFromFileName(name: string): IsoDate | null {
@@ -37,7 +38,7 @@ export function selectBriefing(files: DriveFile[], date: IsoDate): Selection {
   for (const f of files) {
     const d = dateFromFileName(f.name);
     if (!d) {
-      if (/briefing/i.test(f.name) && /\.pdf$/i.test(f.name)) ignored.push(f);
+      if (/briefing/i.test(f.name) && /\.(?:pdf|json)$/i.test(f.name)) ignored.push(f);
       continue;
     }
     const list = byDate.get(d) ?? [];
@@ -45,7 +46,9 @@ export function selectBriefing(files: DriveFile[], date: IsoDate): Selection {
     byDate.set(d, list);
   }
   const availableDates = [...byDate.keys()].sort((a, b) => compareIsoDates(b, a));
-  const candidates = [...(byDate.get(date) ?? [])].sort(newestFirst);
+  const all = [...(byDate.get(date) ?? [])].sort(newestFirst);
+  const json = all.filter((f) => /\.json$/i.test(f.name));
+  const candidates = json.length ? json : all;
   return {
     file: candidates[0] ?? null,
     duplicates: candidates.slice(1),

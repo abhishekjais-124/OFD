@@ -135,7 +135,7 @@ export const itemSchema = z.object({
 export type Item = z.infer<typeof itemSchema>;
 
 export const sectionKindSchema = z.enum([
-  "glance", "mail", "calendar", "slack", "headlines", "question", "job", "routine", "unknown",
+  "glance", "special", "extras", "mail", "calendar", "slack", "headlines", "question", "job", "routine", "unknown",
 ]);
 export type SectionKind = z.infer<typeof sectionKindSchema>;
 

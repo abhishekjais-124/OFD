@@ -7,6 +7,8 @@ import type { LayoutItem, LayoutLink, LayoutTable } from "./layout.ts";
 export function sectionKindFor(title: string): SectionKind {
   const t = title.toLowerCase();
   if (/at a glance|summary|overview/.test(t)) return "glance";
+  if (/special day|today is/.test(t)) return "special";
+  if (/daily extras|extras/.test(t)) return "extras";
   if (/^mail\b|inbox|e-?mail/.test(t)) return "mail";
   if (/slack|mention/.test(t)) return "slack";
   if (/calendar|invite|meeting/.test(t)) return "calendar";
@@ -218,6 +220,8 @@ export const PARSERS: Record<SectionKind, (ctx: ParseContext, items: LayoutItem[
   mail: parseMail,
   calendar: parseCalendar,
   slack: parseSlack,
+  special: parseRoutine,
+  extras: parseRoutine,
   headlines: parseHeadlines,
   question: parseQuestion,
   job: parseJob,

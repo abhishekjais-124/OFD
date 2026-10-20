@@ -6,7 +6,8 @@ import type { Briefing, BriefingResponse, BriefingSource } from "../shared/schem
 import { todayIST, type IsoDate } from "../shared/ist.ts";
 import { DriveError, dateFromFileName, selectBriefing, type DriveClient, type DriveFile } from "./drive/index.ts";
 import { ExtractError, extractPdf, type OcrEngine } from "./extract/index.ts";
-import { PARSER_VERSION, ValidationError, normalizeBriefing } from "./normalize/index.ts";
+import { PARSER_VERSION, ValidationError, isBriefText, normalizeBrief, normalizeBriefing } from "./normalize/index.ts";
+import { BriefError } from "./normalize/brief.ts";
 import { sha256, type Store, type StoreEntry } from "./store/cache.ts";
 
 export interface PipelineDeps {
@@ -243,17 +244,22 @@ export class Pipeline {
   }
 
   private async run(bytes: Uint8Array, meta: { key: string; source: BriefingSource; fileNameDate: string | null; sourceKind: "drive" | "upload"; modifiedTime: string | null }): Promise<Briefing> {
-    const extracted = await extractPdf(bytes, { ocr: this.deps.ocr });
-    for (const page of extracted.pages) for (const image of page.images) this.deps.store.putImage(image.id, image.png);
-    const briefing = normalizeBriefing({
-      extracted,
+    const common = {
       key: meta.key,
       source: meta.source,
       fileNameDate: meta.fileNameDate,
       processedAt: this.now(),
-      imageUrl: (id) => `/api/images/${id}.png`,
-      pdfUrl: `/api/documents/${encodeURIComponent(meta.key)}/pdf`,
-    });
+      imageUrl: (id: string) => `/api/images/${id}.png`,
+    };
+    let briefing: Briefing;
+    if (isBriefText(bytes)) {
+      // compact JSON: no extraction step at all
+      briefing = normalizeBrief(new TextDecoder().decode(bytes), common);
+    } else {
+      const extracted = await extractPdf(bytes, { ocr: this.deps.ocr });
+      for (const page of extracted.pages) for (const image of page.images) this.deps.store.putImage(image.id, image.png);
+      briefing = normalizeBriefing({ ...common, extracted, pdfUrl: `/api/documents/${encodeURIComponent(meta.key)}/pdf` });
+    }
     await this.attachRemoteImages(briefing);
     this.deps.store.putResult(
       {
@@ -318,6 +324,7 @@ export class Pipeline {
     base.status = "error";
     if (err instanceof DriveError) base.error = { code: `drive_${err.code}`, message: err.message, retryable: err.retryable };
     else if (err instanceof ExtractError) base.error = { code: `pdf_${err.code}`, message: err.message, retryable: err.code === "corrupted" };
+    else if (err instanceof BriefError) base.error = { code: "brief_invalid", message: err.message, retryable: true };
     else if (err instanceof ValidationError) base.error = { code: "parse_failed", message: err.message, retryable: false };
     else base.error = { code: "unexpected", message: (err as Error).message ?? String(err), retryable: true };
     return base;
