@@ -4,7 +4,7 @@ import { formatDateTimeIST, formatLongDateIST, greetingIST, nameFromGreetingTitl
 import { formatBytes } from "@shared/more";
 import { Segmented } from "../components/nav.tsx";
 import { AlertList, UpdateRow } from "../components/mail.tsx";
-import { JobView, QuestionView } from "../components/learn.tsx";
+import { DailyView, JobView, QuestionView } from "../components/learn.tsx";
 import { MentionList } from "../components/mentions.tsx";
 import { NewsCarousel, StoryRow } from "../components/news.tsx";
 import { mixStories } from "@shared/news";
@@ -87,6 +87,7 @@ export function TodayPage(p: PageProps) {
   const glance = allItems(sectionsOf(b, "glance"));
   const calendar = allItems(sectionsOf(b, "calendar"));
   const slackSection = sectionsOf(b, "slack");
+  const special = allItems(sectionsOf(b, "special")).flatMap((i) => i.lines).join(" ").replace(/^\s*Special day:?\s*/i, "").replace(/\s+/g, " ").trim();
   const mentions = allItems(slackSection);
   return (
     <>
@@ -95,6 +96,7 @@ export function TodayPage(p: PageProps) {
         <span className="eyebrow">{p.sourceKind === "upload" ? "Uploaded file" : isToday ? "Today" : "Not today"}</span>
         <h2 className="hero-title">{greeting(b.title, p.now)}</h2>
         <p className="date">{b.date ? formatLongDateIST(b.date) : "Date unknown"}{b.dateSource === "content" ? " (read from the document)" : ""}</p>
+        {special && <p className="special-day"><span aria-hidden="true">\u2726</span> {special}</p>}
         <WeatherReadout state={p.weather} onLocate={p.onLocate} />
         <div className="meta-row">
           {!isToday && p.sourceKind !== "upload" && <Chip tone="warn">Showing {b.date ?? "an undated file"}, today is {p.todayIST}</Chip>}
@@ -212,18 +214,21 @@ export function LearnPage(p: PageProps) {
   const q = allItems(sectionsOf(p.briefing, "question")).find((i) => i.kind === "question" && i.question);
   const jobs = allItems(sectionsOf(p.briefing, "job"));
   const hasJob = jobs.some((i) => i.kind === "job" && i.job);
+  const extras = allItems(sectionsOf(p.briefing, "extras"));
   const tabs = [
     ...(q ? [{ id: "question", label: "Question" }] : []),
     ...(hasJob ? [{ id: "job", label: "Job" }] : []),
+    ...(extras.length ? [{ id: "daily", label: "Daily" }] : []),
   ];
   const [tab, setTab] = useState(tabs[0]?.id ?? "question");
-  if (!tabs.length) return <Empty text="No question or job in this briefing." />;
+  if (!tabs.length) return <Empty text="No question, job or daily extras in this briefing." />;
   const active = tabs.some((t) => t.id === tab) ? tab : tabs[0]!.id;
   return (
     <>
       <Segmented value={active} onChange={setTab} options={tabs} />
       {active === "question" && q && <QuestionView item={q} ctx={ctx} />}
       {active === "job" && <JobView items={jobs} ctx={ctx} />}
+      {active === "daily" && <DailyView items={extras} />}
     </>
   );
 }
@@ -374,7 +379,7 @@ export function MorePage(p: MoreProps) {
 
       <SettingsGroup title="Open">
         <div className="mlist">
-          <ActionRow icon={Icon.pdf()} title="Original PDF" sub={[b.source.fileName, formatBytes(b.source.size)].filter(Boolean).join(" · ")} href={b.pdfUrl} />
+          {b.pdfUrl && <ActionRow icon={Icon.pdf()} title="Original PDF" sub={[b.source.fileName, formatBytes(b.source.size)].filter(Boolean).join(" · ")} href={b.pdfUrl} />}
           {b.source.webViewLink && <ActionRow icon={Icon.open()} title="On Google Drive" sub="Opens the file in Drive" href={b.source.webViewLink} />}
         </div>
       </SettingsGroup>

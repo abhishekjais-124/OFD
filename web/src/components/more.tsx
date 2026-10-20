@@ -53,7 +53,7 @@ export function BriefingHeader({ briefing, cached, now, busy, canRefresh, onRefr
   briefing: Briefing; cached: boolean; now: Date; busy: "refresh" | "reprocess" | "upload" | null; canRefresh: boolean; onRefresh: () => void; onReprocess: () => void;
 }) {
   const b = briefing;
-  const status = b.confidence === "high" ? "All pages read cleanly" : b.confidence === "low" ? "Read with OCR, lower confidence" : "Some pages could not be read";
+  const status = b.confidence === "high" ? "Everything read cleanly" : b.confidence === "low" ? "Read with OCR, lower confidence" : "Some parts could not be read";
   return (
     <div className="mhead">
       <h2 className="mhead-date">{b.date ? formatLongDateIST(b.date) : "Date unknown"}</h2>
@@ -67,7 +67,7 @@ export function BriefingHeader({ briefing, cached, now, busy, canRefresh, onRefr
           </button>
         )}
         <button className="qa" type="button" onClick={onReprocess} disabled={busy !== null}>
-          {Icon.reprocess(busy === "reprocess" ? "spin" : undefined)}<span className="qa-t">Read again</span><span className="qa-s">Re-parse the saved PDF</span>
+          {Icon.reprocess(busy === "reprocess" ? "spin" : undefined)}<span className="qa-t">Read again</span><span className="qa-s">Re-read the saved file</span>
         </button>
       </div>
     </div>
@@ -150,7 +150,7 @@ export function NotesRow({ briefing }: { briefing: Briefing }) {
 export function AboutRow({ briefing }: { briefing: Briefing }) {
   const size = formatBytes(briefing.source.size);
   return (
-    <FoldRow icon={Icon.pdf()} title="About this file" sub={[`${briefing.pageCount} page${briefing.pageCount === 1 ? "" : "s"}`, size].filter(Boolean).join(" · ")}>
+    <FoldRow icon={Icon.pdf()} title="About this file" sub={[briefing.pdfUrl ? `${briefing.pageCount} page${briefing.pageCount === 1 ? "" : "s"}` : "compact file", size].filter(Boolean).join(" · ")}>
       <dl className="about">
         <dt>Source</dt><dd>{briefing.source.kind === "drive" ? "Google Drive" : "Uploaded"}</dd>
         {briefing.source.modifiedTime && <><dt>Drive version</dt><dd>{formatDateTimeIST(new Date(briefing.source.modifiedTime))}</dd></>}
