@@ -10,6 +10,8 @@ import { NewsCarousel, StoryRow } from "../components/news.tsx";
 import { mixStories } from "@shared/news";
 import { ItemView } from "../components/sections.tsx";
 import { Chip, Icon } from "../components/ui.tsx";
+import { AlertCards, UpdateCards } from "../components/updates.tsx";
+import { hiddenAsDone } from "../done.ts";
 import { ActionRow, AboutRow, BriefingHeader, DayPills, NotesRow, SettingsGroup, SourcesRow, UploadRow } from "../components/more.tsx";
 import { SkyScene, WeatherIcon, type WeatherState } from "../weather.tsx";
 import { filterSections, countItems } from "../search.ts";
@@ -82,13 +84,14 @@ export function TodayPage(p: PageProps) {
   const ctx = ctxOf(p);
   const isToday = b.date === p.todayIST;
   const wx = p.weather.status === "ok" ? p.weather.weather : null;
-  const actions = allItems(sectionsOf(b, "mail")).filter((i) => i.kind === "action" && i.action);
+  const actions = allItems(sectionsOf(b, "mail")).filter((i) => i.kind === "action" && i.action && !hiddenAsDone(i));
   actions.sort((x, y) => (x.action!.deadlineDate ?? "9999").localeCompare(y.action!.deadlineDate ?? "9999"));
-  const glance = allItems(sectionsOf(b, "glance"));
   const calendar = allItems(sectionsOf(b, "calendar"));
   const slackSection = sectionsOf(b, "slack");
   const special = allItems(sectionsOf(b, "special")).flatMap((i) => i.lines).join(" ").replace(/^\s*Special day:?\s*/i, "").replace(/\s+/g, " ").trim();
   const mentions = allItems(slackSection);
+  const updates = allItems(sectionsOf(b, "updates")).filter((i) => i.lines.length > 0).slice(0, 1);
+  const alertItems = allItems(sectionsOf(b, "alerts")).filter((i) => i.lines.length > 0);
   return (
     <>
       <div className="hero fade-in" data-sky={wx?.sky ?? "none"} data-day={wx ? (wx.isDay ? "day" : "night") : "none"}>
@@ -96,7 +99,7 @@ export function TodayPage(p: PageProps) {
         <span className="eyebrow">{p.sourceKind === "upload" ? "Uploaded file" : isToday ? "Today" : "Not today"}</span>
         <h2 className="hero-title">{greeting(b.title, p.now)}</h2>
         <p className="date">{b.date ? formatLongDateIST(b.date) : "Date unknown"}{b.dateSource === "content" ? " (read from the document)" : ""}</p>
-        {special && <p className="special-day"><span aria-hidden="true">\u2726</span> {special}</p>}
+        {special && <p className="special-day"><span aria-hidden="true">{"\u2726"}</span> {special}</p>}
         <WeatherReadout state={p.weather} onLocate={p.onLocate} />
         <div className="meta-row">
           {!isToday && p.sourceKind !== "upload" && <Chip tone="warn">Showing {b.date ?? "an undated file"}, today is {p.todayIST}</Chip>}
@@ -113,14 +116,20 @@ export function TodayPage(p: PageProps) {
           <MentionList items={mentions} now={p.now} pdfUrl={b.pdfUrl} max={3} />
         </section>
       )}
-      {glance.length > 0 && (
-        <details className="glance-fold">
-          <summary><span>At a glance</span>{Icon.chev()}</summary>
-          <div className="stack">{glance.map((it) => <ItemView key={it.id} item={it} ctx={ctx} />)}</div>
-        </details>
+      {updates.length > 0 && (
+        <section className="section">
+          <div className="section-head"><h2>My updates</h2><span className="count">{updates.length}</span></div>
+          <UpdateCards items={updates} now={p.now} />
+        </section>
+      )}
+      {alertItems.length > 0 && (
+        <section className="section">
+          <div className="section-head"><h2>Alerts summary</h2><span className="count">{alertItems.length}</span></div>
+          <AlertCards items={alertItems} now={p.now} />
+        </section>
       )}
       {calendar.length > 0 && <Group title="Calendar">{calendar.map((it) => <ItemView key={it.id} item={it} ctx={ctx} />)}</Group>}
-      {actions.length + glance.length + calendar.length + slackSection.length === 0 && <Empty text="Nothing recognised for the Today page. Open More for every section." />}
+      {actions.length + calendar.length + slackSection.length === 0 && <Empty text="Nothing recognised for the Today page. Open More for every section." />}
     </>
   );
 }
@@ -129,11 +138,22 @@ export function TodayPage(p: PageProps) {
 export function MailPage(p: PageProps) {
   const ctx = ctxOf(p);
   const items = allItems(sectionsOf(p.briefing, "mail"));
-  const important = items.filter((i) => i.kind === "action");
+  const important = items.filter((i) => i.kind === "action" && !hiddenAsDone(i));
   const alerts = items.filter((i) => i.kind === "alerts");
   const updates = items.filter((i) => i.kind === "github" || i.kind === "share");
-  const rest = items.filter((i) => !important.includes(i) && !alerts.includes(i) && !updates.includes(i));
+  // the routine's own "Inbox clear" card is the empty state, not content
+  const rest = items.filter((i) => i.kind !== "action" && !alerts.includes(i) && !updates.includes(i) && !/^\s*inbox clear\.?\s*$/i.test(i.lines.join(" ")));
   if (!items.length) return <Empty text="No mail section in this briefing." />;
+  if (!important.length && !updates.length && !alerts.length && !rest.length) {
+    const doneBefore = items.some((i) => i.kind === "action");
+    return (
+      <div className="clear-state fade-in">
+        <span className="clear-ico">{Icon.check()}</span>
+        <h2>{doneBefore ? "All caught up" : "Inbox clear"}</h2>
+        <p>{doneBefore ? "Everything that needed action is marked done." : "Nothing in your mail needs you right now."}</p>
+      </div>
+    );
+  }
   return (
     <>
       {important.length > 0 && <Group title="Needs action" count={important.length} pill="danger">{important.map((i) => <ItemView key={i.id} item={i} ctx={ctx} />)}</Group>}
