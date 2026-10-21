@@ -13,6 +13,8 @@ function load(): Record<string, true> {
 }
 
 let state = load();
+/** Actions already done when the app opened: they stay hidden (this session, the next reload, the next day). */
+const doneAtLoad = new Set(Object.keys(state));
 const listeners = new Set<() => void>();
 
 function set(next: Record<string, true>) {
@@ -28,6 +30,11 @@ function set(next: Record<string, true>) {
 /** Stable across reprocessing: the deadline plus the start of the title. */
 export function actionKey(item: Item): string {
   return `${item.action?.deadlineDate ?? "x"}|${(item.title ?? item.id).slice(0, 60)}`;
+}
+
+/** True for an action that was marked done before this page load. */
+export function hiddenAsDone(item: Item): boolean {
+  return doneAtLoad.has(actionKey(item));
 }
 
 const subscribe = (cb: () => void) => {

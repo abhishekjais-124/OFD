@@ -14,7 +14,7 @@ export { layoutDocument } from "./layout.ts";
 export { normalizeBrief, isBriefText } from "./brief.ts";
 
 /** Bump when the parser output changes so cached results are reprocessed. */
-export const PARSER_VERSION = "2026.10.19-4";
+export const PARSER_VERSION = "2026.10.21-1";
 
 export interface NormalizeInput {
   extracted: ExtractedDocument;
