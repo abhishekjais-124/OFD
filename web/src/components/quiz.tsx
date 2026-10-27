@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import type { QuizQuestion, QuizResponse } from "@shared/quiz";
 import { formatShortDateIST } from "@shared/ist";
 import { api } from "../api.ts";
-import { play, setSoundOn, soundOn } from "../sound.ts";
+import { haptic, play, setSoundOn, soundOn } from "../sound.ts";
 import { Icon } from "./ui.tsx";
 
 interface QuizRecord { plays: number; best: number; last: number }
@@ -53,7 +53,7 @@ export function QuizCard({ date }: { date: string }) {
   }, [date]);
 
   const questions = quiz?.questions ?? [];
-  const start = () => { play("start"); setOpen(true); };
+  const start = () => { play("start"); haptic("tap"); setOpen(true); };
 
   return (
     <article className="quiz-card fade-in">
@@ -110,15 +110,17 @@ function QuizPlayer({ questions, onDone, onClose }: { questions: QuizQuestion[];
     if (answered) return;
     setPicks([...picks, i]);
     play(i === q.answer ? "right" : "wrong");
-    navigator.vibrate?.(i === q.answer ? 12 : [30, 40, 30]);
+    haptic(i === q.answer ? "right" : "wrong");
   };
   const next = () => {
-    if (index + 1 < total) { play("tap"); setIndex(index + 1); return; }
+    if (index + 1 < total) { play("tap"); haptic("tap"); setIndex(index + 1); return; }
     const r = onDone(score);
     play(score === total ? "perfect" : "reveal");
+    // land the buzz with the score ring finishing its count
+    setTimeout(() => haptic(score === total ? "perfect" : "reveal"), 1100);
     setRecord(r);
   };
-  const again = () => { play("start"); setPicks([]); setIndex(0); setRecord(null); };
+  const again = () => { play("start"); haptic("tap"); setPicks([]); setIndex(0); setRecord(null); };
   const toggleSound = () => { const on = !sound; setSoundOn(on); setSound(on); if (on) play("tap"); };
 
   return (

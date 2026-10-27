@@ -52,3 +52,45 @@ export function play(cue: Cue): void {
   const ac = audio();
   if (ac) CUES[cue](ac);
 }
+
+/* ---------- haptics ---------- */
+export type Buzz = "tap" | "right" | "wrong" | "reveal" | "perfect";
+
+const PATTERNS: Record<Buzz, number[]> = {
+  tap: [8],
+  right: [14],
+  wrong: [30, 50, 30],
+  reveal: [20, 60, 20],
+  perfect: [20, 50, 20, 50, 60],
+};
+
+let iosSwitch: HTMLLabelElement | null = null;
+/** iOS Safari has no vibrate(); toggling a native switch input gives one light tick (iOS 18+). */
+function iosTick() {
+  if (!iosSwitch) {
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.setAttribute("switch", "");
+    input.id = "ofd-haptic";
+    input.style.display = "none";
+    iosSwitch = document.createElement("label");
+    iosSwitch.htmlFor = input.id;
+    iosSwitch.style.display = "none";
+    document.body.append(input, iosSwitch);
+  }
+  iosSwitch.click();
+}
+
+export function haptic(kind: Buzz): void {
+  if (typeof navigator === "undefined") return;
+  if (typeof navigator.vibrate === "function") {
+    navigator.vibrate(PATTERNS[kind]);
+    return;
+  }
+  // one tick per pulse in the pattern, spaced like the pattern
+  let at = 0;
+  PATTERNS[kind].forEach((ms, i) => {
+    if (i % 2 === 0) setTimeout(iosTick, at);
+    at += ms + 40;
+  });
+}
