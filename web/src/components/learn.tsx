@@ -3,6 +3,7 @@ import type { Item } from "@shared/schema";
 import { reportedCompanies } from "@shared/companies";
 import { companyFromUrl, describeJob, experienceFrom, skillsFrom, workModeFrom, type WorkMode } from "@shared/job";
 import { parseExample, parseWhyToday, splitConstraints, splitRequirements, stripUnverified, tidyPosted } from "@shared/learn";
+import { QuizCard } from "./quiz.tsx";
 import { Icon, LinkChips, copyText, useToast } from "./ui.tsx";
 
 interface Ctx { pdfUrl: string }
@@ -281,7 +282,7 @@ function Block({ icon, label, children }: { icon: React.ReactNode; label: string
 }
 
 /** Word, fact, quote, tip, history, a Gita shlok and a riddle for the day, each as its own small card. */
-export function DailyView({ items }: { items: Item[] }) {
+export function DailyView({ items, date }: { items: Item[]; date: string }) {
   const item = items[0];
   if (!item) return null;
   const word = f(item, "Word");
@@ -333,6 +334,7 @@ export function DailyView({ items }: { items: Item[] }) {
           )}
         </Block>
       )}
+      <QuizCard date={date} />
     </div>
   );
 }

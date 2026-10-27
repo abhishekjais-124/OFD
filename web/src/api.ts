@@ -1,4 +1,5 @@
 import type { BriefingResponse, StatusResponse } from "@shared/schema";
+import type { QuizResponse } from "@shared/quiz";
 import { BASE, withBase } from "./base.ts";
 
 export interface ApiResult<T> {
@@ -30,6 +31,7 @@ async function call<T>(input: string, init?: RequestInit): Promise<ApiResult<T>>
 export const api = {
   status: () => call<StatusResponse>("/api/status"),
   today: (refresh = false) => call<BriefingResponse>(`/api/today${refresh ? "?refresh=1" : ""}`),
+  quiz: (date: string) => call<QuizResponse>(`/api/quiz/${date}`),
   forDate: (date: string, refresh = false) => call<BriefingResponse>(`/api/briefings/${date}${refresh ? "?refresh=1" : ""}`),
   reprocess: (key: string) => call<BriefingResponse>(`/api/documents/${encodeURIComponent(key)}/reprocess`, { method: "POST" }),
   upload: (file: File) =>
