@@ -1,6 +1,7 @@
 import express, { type Express } from "express";
 import type { StatusResponse } from "../../shared/schema.ts";
-import { isIsoDate } from "../../shared/ist.ts";
+import { addDaysIST, isIsoDate } from "../../shared/ist.ts";
+import { buildQuiz, dayExtrasFrom, QUIZ_WINDOW_DAYS, type DayExtras, type QuizResponse } from "../../shared/quiz.ts";
 import type { Pipeline } from "../pipeline.ts";
 import { WeatherError, parseCoordinates, type WeatherService } from "../weather.ts";
 
@@ -61,6 +62,34 @@ export function createApp(deps: AppDeps): Express {
       return;
     }
     res.json(await pipeline.forDate(date, { refresh: req.query.refresh === "1" }));
+  });
+
+  // Quiz of the day from the Daily extras of the last month; the same date always gives the same quiz.
+  const quizCache = new Map<string, { at: number; body: QuizResponse }>();
+  app.get("/api/quiz/:date", async (req, res) => {
+    const date = String(req.params.date);
+    if (!isIsoDate(date)) {
+      res.status(400).json({ error: { code: "bad_date", message: "date must be YYYY-MM-DD", retryable: false } });
+      return;
+    }
+    const hit = quizCache.get(date);
+    if (hit && Date.now() - hit.at < 10 * 60_000) {
+      res.json(hit.body);
+      return;
+    }
+    const from = addDaysIST(date, -QUIZ_WINDOW_DAYS);
+    const dates = (await pipeline.listDates().catch(() => [] as string[])).filter((d) => d >= from && d <= date);
+    const days: DayExtras[] = [];
+    for (let i = 0; i < dates.length; i += 6) {
+      const batch = await Promise.all(dates.slice(i, i + 6).map((d) => pipeline.forDate(d).catch(() => null)));
+      for (const r of batch) {
+        const extras = r?.briefing ? dayExtrasFrom(r.briefing) : null;
+        if (extras) days.push(extras);
+      }
+    }
+    const body = buildQuiz(date, days);
+    quizCache.set(date, { at: Date.now(), body });
+    res.json(body);
   });
 
   app.post("/api/briefings/:date/refresh", async (req, res) => {

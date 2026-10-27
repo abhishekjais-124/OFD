@@ -248,7 +248,7 @@ export function LearnPage(p: PageProps) {
       <Segmented value={active} onChange={setTab} options={tabs} />
       {active === "question" && q && <QuestionView item={q} ctx={ctx} />}
       {active === "job" && <JobView items={jobs} ctx={ctx} />}
-      {active === "daily" && <DailyView items={extras} />}
+      {active === "daily" && <DailyView items={extras} date={p.briefing.date ?? p.todayIST} />}
     </>
   );
 }

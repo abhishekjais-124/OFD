@@ -3,6 +3,7 @@ import type { Item } from "@shared/schema";
 import { reportedCompanies } from "@shared/companies";
 import { companyFromUrl, describeJob, experienceFrom, skillsFrom, workModeFrom, type WorkMode } from "@shared/job";
 import { parseExample, parseWhyToday, splitConstraints, splitRequirements, stripUnverified, tidyPosted } from "@shared/learn";
+import { QuizCard } from "./quiz.tsx";
 import { Icon, LinkChips, copyText, useToast } from "./ui.tsx";
 
 interface Ctx { pdfUrl: string }
@@ -280,14 +281,15 @@ function Block({ icon, label, children }: { icon: React.ReactNode; label: string
   );
 }
 
-/** Word, fact, quote, tip, history and a riddle for the day, each as its own small card. */
-export function DailyView({ items }: { items: Item[] }) {
+/** Word, fact, quote, tip, history, a Gita shlok and a riddle for the day, each as its own small card. */
+export function DailyView({ items, date }: { items: Item[]; date: string }) {
   const item = items[0];
   if (!item) return null;
   const word = f(item, "Word");
   const quote = f(item, "Quote");
   const history = f(item, "History");
   const year = history ? /^(\d{1,4}(?:\s?(?:BC|AD|BCE|CE))?)\s*[-:\u2013\u2014]\s*(.+)$/i.exec(history) : null;
+  const shlok = f(item, "Shlok");
   const riddle = f(item, "Riddle");
   const answer = f(item, "Answer");
   return (
@@ -313,6 +315,14 @@ export function DailyView({ items }: { items: Item[] }) {
           {year ? <><p className="dx-year">{year[1]}</p><p className="dx-body">{year[2]}</p></> : <p className="dx-body">{history}</p>}
         </Block>
       )}
+      {shlok && (
+        <Block icon={Icon.learn()} label={`Shlok of the day${f(item, "Gita ref") ? ` \u00b7 Gita ${f(item, "Gita ref")}` : ""}`}>
+          <p className="dx-shlok">{shlok.split(/(?<=\u0964)\s+(?=\S)/).map((l, i) => <span key={i}>{l}</span>)}</p>
+          {f(item, "Transliteration") && <p className="dx-translit">{f(item, "Transliteration")}</p>}
+          {f(item, "Gita meaning") && <p className="dx-body">{f(item, "Gita meaning")}</p>}
+          {f(item, "Gita Hindi") && <p className="dx-ex">{f(item, "Gita Hindi")}</p>}
+        </Block>
+      )}
       {riddle && (
         <Block icon={Icon.pin()} label="Riddle of the day">
           <p className="dx-body">{riddle}</p>
@@ -324,6 +334,7 @@ export function DailyView({ items }: { items: Item[] }) {
           )}
         </Block>
       )}
+      <QuizCard date={date} />
     </div>
   );
 }
