@@ -1274,3 +1274,36 @@ h3.upd-h.prog { color: #f5a524; background: rgba(245, 165, 36, 0.12); }
 .older-row { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
 .older-row::-webkit-scrollbar { display: none; }
 .older-row .chip { flex: none; white-space: nowrap; cursor: pointer; font: inherit; font-size: 13px; }
+
+/* ---------- Calendar card ---------- */
+.calx { position: relative; padding: 16px; border-radius: var(--radius); background: radial-gradient(260px 140px at 100% 0%, rgba(111, 134, 255, 0.14), transparent 70%), var(--surface); border: 1px solid var(--border); box-shadow: var(--ring); display: flex; flex-direction: column; gap: 12px; }
+.calx-head { display: flex; align-items: center; gap: 12px; }
+.calx-badge { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 14px; background: rgba(62, 207, 142, 0.14); color: #3ecf8e; }
+.calx-badge.busy { background: var(--accent-soft); color: var(--accent-text); }
+.calx-badge svg { width: 22px; height: 22px; }
+.calx-titles { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.calx-day { font-size: 11.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); }
+.calx-sum { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; color: var(--text); }
+.calx-open { flex: none; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px; border: 1px solid var(--border); background: rgba(255, 255, 255, 0.04); color: var(--text-2); }
+.calx-open svg { width: 17px; height: 17px; }
+.calx-call { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: rgba(245, 165, 36, 0.1); border: 1px solid rgba(245, 165, 36, 0.25); }
+.calx-call.upcoming { background: rgba(255, 255, 255, 0.035); border-color: var(--border); }
+.calx-call-dot { flex: none; width: 9px; height: 9px; border-radius: 50%; background: #f5a524; box-shadow: 0 0 0 4px rgba(245, 165, 36, 0.18); animation: calx-pulse 2s ease-in-out infinite; }
+.calx-call.upcoming .calx-call-dot { background: var(--text-3); box-shadow: none; animation: none; }
+@keyframes calx-pulse { 50% { box-shadow: 0 0 0 7px rgba(245, 165, 36, 0.06); } }
+.calx-call-text { flex: 1; display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-size: 14px; }
+.calx-call-text b { font-weight: 650; color: var(--text); }
+.calx-call-text span { flex: none; font-size: 12px; font-weight: 600; color: #f5c46a; }
+.calx-call.upcoming .calx-call-text span { color: var(--text-3); }
+.calx-agenda { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.calx-agenda li { display: grid; grid-template-columns: 74px 1fr; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.035); border-left: 3px solid var(--accent); }
+.calx-agenda li.interview { border-left-color: #b08bff; background: rgba(176, 139, 255, 0.08); }
+.calx-time { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-2); }
+.calx-what { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.calx-title { font-size: 14px; font-weight: 600; color: var(--text); overflow-wrap: anywhere; }
+.calx-kind { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); }
+.calx-agenda li.interview .calx-kind { color: #c9b3ff; }
+.calx-free { font-size: 13.5px; color: var(--text-2); padding: 2px 2px 0; }
+.calx-rsvp { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 12px; background: rgba(245, 165, 36, 0.08); font-size: 13.5px; color: var(--text-2); }
+.calx-rsvp b { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #f5c46a; }
+@media (prefers-reduced-motion: reduce) { .calx-call-dot { animation: none; } }

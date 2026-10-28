@@ -3,7 +3,7 @@ import { actionKey, useDone } from "../done.ts";
 import { MentionRow } from "./mentions.tsx";
 import type { Briefing, Item, Section } from "@shared/schema";
 import { splitSteps, topSteps } from "@shared/actions";
-import { parseCalendarStatus } from "@shared/calendar";
+import { agendaEntries, onCallWindow, parseCalendarStatus } from "@shared/calendar";
 import { countdownIST, formatDateTimeIST, formatShortDateIST, todayIST } from "@shared/ist";
 import { Chip, CopyButton, DataTable, FieldList, Flags, Icon, LinkChips, LinkList } from "./ui.tsx";
 
@@ -126,30 +126,63 @@ function ActionCard({ item, ctx, compact = false }: { item: Item; ctx: Ctx; comp
 }
 
 /* ---------- calendar ---------- */
+const shortDay = (d: string) => new Date(`${d}T12:00:00+05:30`).toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" });
+
 function CalendarCard({ item, ctx }: { item: Item; ctx: Ctx }) {
   const st = parseCalendarStatus(item.lines);
-  const [sel, setSel] = useState<string | null>(null);
   if (!st.recognized) return <GenericCard item={item} ctx={ctx} />;
-  const tiles = [
-    { label: "Meetings", value: st.meetings, icon: Icon.calendar },
-    { label: "Interviews", value: st.interviews, icon: Icon.briefcase },
-    { label: "On call", value: st.onCall, icon: Icon.pin },
-  ];
+  const interviews = agendaEntries(st.interviews);
+  const meetings = agendaEntries(st.meetings);
+  const today = todayIST();
+  const call = onCallWindow(st.onCall, today);
   const link = item.links.find((l) => /calendar/i.test(l.label ?? "") || /calendar/i.test(l.url)) ?? item.links[0];
-  const open = tiles.find((t) => t.label === sel && t.value);
-  // three small tiles in one row; a tile with something in it grows a little and opens its full text on tap
+  const count = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
+  const summary = interviews.length + meetings.length === 0
+    ? "Free day, nothing booked"
+    : [interviews.length ? count(interviews.length, "interview") : "", meetings.length ? count(meetings.length, "meeting") : ""].filter(Boolean).join(" \u00b7 ");
+  const weekday = new Date().toLocaleDateString("en-IN", { weekday: "long", timeZone: "Asia/Kolkata" });
+  const callLine = !call ? null
+    : call.state === "active" ? `On call${call.end ? ` until ${shortDay(call.end)}` : " now"}`
+    : call.state === "upcoming" ? `On call from ${call.start ? shortDay(call.start) : "soon"}`
+    : call.state === "ended" ? null : "On call";
+  const callNote = !call ? null
+    : call.state === "active" && call.days !== null ? (call.days === 0 ? "Last day" : `${call.days} day${call.days === 1 ? "" : "s"} left`)
+    : call.state === "upcoming" && call.days !== null ? (call.days === 1 ? "Starts tomorrow" : `Starts in ${call.days} days`)
+    : null;
   return (
-    <article className="cal fade-in">
-      <div className="cal-tiles">
-        {tiles.map((t) => (
-          <button key={t.label} type="button" className={`cal-tile${t.value ? " on" : ""}${sel === t.label ? " sel" : ""}`} disabled={!t.value} aria-expanded={sel === t.label} onClick={() => setSel(sel === t.label ? null : t.label)}>
-            <span className="cal-tile-top">{t.icon()}<span>{t.label}</span></span>
-            <span className="cal-tile-val">{t.value ?? "None"}</span>
-          </button>
-        ))}
-      </div>
-      {link && <a className="cal-open-top" href={link.url} target="_blank" rel="noreferrer" aria-label="Open calendar" title="Open calendar">{Icon.open()}</a>}
-      {open && <div className="cal-more"><p>{open.value}</p></div>}
+    <article className="calx fade-in">
+      <header className="calx-head">
+        <span className={`calx-badge${interviews.length + meetings.length ? " busy" : ""}`} aria-hidden="true">{Icon.calendar()}</span>
+        <span className="calx-titles">
+          <span className="calx-day">{weekday}</span>
+          <span className="calx-sum">{summary}</span>
+        </span>
+        {link && <a className="calx-open" href={link.url} target="_blank" rel="noreferrer" aria-label="Open Google Calendar" title="Open Google Calendar">{Icon.open()}</a>}
+      </header>
+
+      {callLine && (
+        <div className={`calx-call ${call!.state}`}>
+          <span className="calx-call-dot" aria-hidden="true" />
+          <span className="calx-call-text"><b>{callLine}</b>{callNote && <span>{callNote}</span>}</span>
+        </div>
+      )}
+
+      {interviews.length + meetings.length > 0 ? (
+        <ul className="calx-agenda">
+          {[...interviews.map((e) => ({ ...e, kind: "interview" as const })), ...meetings.map((e) => ({ ...e, kind: "meeting" as const }))]
+            .sort((a, b) => (a.time ?? "99").localeCompare(b.time ?? "99"))
+            .map((e, i) => (
+              <li key={i} className={e.kind}>
+                <span className="calx-time">{e.time ?? "Today"}</span>
+                <span className="calx-what"><span className="calx-title">{e.title}</span><span className="calx-kind">{e.kind === "interview" ? "Interview" : "Meeting"}</span></span>
+              </li>
+            ))}
+        </ul>
+      ) : (
+        <p className="calx-free">No meetings or interviews. Good day for deep work.</p>
+      )}
+
+      {st.rsvp && <p className="calx-rsvp"><b>RSVP needed</b>{st.rsvp}</p>}
     </article>
   );
 }
