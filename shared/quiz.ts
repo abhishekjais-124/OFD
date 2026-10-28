@@ -17,6 +17,8 @@ export interface DayExtras {
   shlok?: string;
   gitaRef?: string;
   translit?: string;
+  /** English meaning of the day's Gita verse. */
+  gitaMeaning?: string;
 }
 
 export type QuizKind = "word" | "meaning" | "quote" | "history" | "riddle" | "shlok";
@@ -61,6 +63,7 @@ export function dayExtrasFrom(briefing: Briefing): DayExtras | null {
     shlok: field(item, "Shlok"),
     gitaRef: field(item, "Gita ref"),
     translit: field(item, "Transliteration"),
+    gitaMeaning: field(item, "Gita meaning"),
   };
 }
 
@@ -75,6 +78,14 @@ const SPARE_MEANINGS = [
 ];
 const SPARE_WORDS = ["ephemeral", "meticulous", "garrulous", "resilient", "ebullient", "serendipity"];
 const SPARE_AUTHORS = ["Albert Einstein", "Mahatma Gandhi", "Maya Angelou", "Marcus Aurelius", "Confucius", "Mark Twain"];
+const SPARE_GITA = [
+  "Remain calm and steady in both success and failure.",
+  "The soul is eternal; it is never born and never dies.",
+  "Give up anger and greed, they lead to ruin.",
+  "A person is made by their faith; they become what they believe.",
+  "Whoever sees all beings in the Self is never troubled.",
+  "Offer your work to God and let go of attachment to its reward.",
+];
 const SPARE_ANSWERS = ["A piano", "A towel", "A clock", "A cold", "A coin", "Your age", "A comb", "Water", "A needle", "Footsteps", "A stamp", "A sponge"];
 
 /** FNV-1a then mulberry32: a small seeded generator that is the same in Node and the browser. */
@@ -136,17 +147,16 @@ function candidates(day: DayExtras, all: DayExtras[], rnd: () => number, thisYea
   const year = day.history ? /^(\d{3,4})\s*[-:–—]\s*(.+)$/.exec(day.history) : null;
   if (year) {
     const y = Number(year[1]);
-    const near = shuffle([-40, -25, -12, -7, 7, 12, 25, 40].map((d) => y + d).filter((v) => v > 0 && v <= thisYear), rnd);
-    out.push(build("history", day, "In which year did this happen?", String(y), near.length >= 2 ? near.slice(0, 2).map(String) : null, rnd, clip(year[2]!, 160)));
+    const near = shuffle([-120, -85, -60, -45, -30, 30, 45, 60, 85, 120].map((d) => y + d).filter((v) => v > 0 && v <= thisYear), rnd);
+    out.push(build("history", day, "Roughly when did this happen?", String(y), near.length >= 2 ? near.slice(0, 2).map(String) : null, rnd, clip(year[2]!, 160)));
   }
   if (day.riddle && day.answer) {
     out.push(build("riddle", day, day.riddle, day.answer, wrongOptions(day.answer, others.map((d) => d.answer), SPARE_ANSWERS, rnd), rnd));
   }
-  const chapter = day.gitaRef ? /^(\d{1,2})\./.exec(day.gitaRef) : null;
-  if (chapter && (day.translit || day.shlok)) {
-    const c = Number(chapter[1]);
-    const near = shuffle(Array.from({ length: 18 }, (_, i) => i + 1).filter((v) => v !== c), rnd).slice(0, 2);
-    out.push(build("shlok", day, "This Gita verse is from which chapter?", `Chapter ${c}`, near.map((v) => `Chapter ${v}`), rnd, clip(day.translit ?? day.shlok!, 140)));
+  if (day.gitaMeaning && (day.translit || day.shlok)) {
+    const meaning = clip(day.gitaMeaning, 130);
+    const wrong = wrongOptions(meaning, others.map((d) => (d.gitaMeaning ? clip(d.gitaMeaning, 130) : undefined)), SPARE_GITA, rnd);
+    out.push(build("shlok", day, "What does this Gita verse say?", meaning, wrong, rnd, clip(day.translit ?? day.shlok!, 140)));
   }
   return out.filter((q): q is QuizQuestion => q !== null);
 }
@@ -183,5 +193,8 @@ export function buildQuiz(date: IsoDate, days: DayExtras[], size = QUIZ_SIZE): Q
       }
     }
   }
+  // easy first, medium last
+  const level: Record<QuizKind, number> = { riddle: 1, word: 2, meaning: 3, shlok: 3, quote: 4, history: 5 };
+  picked.sort((a, b) => level[a.kind] - level[b.kind]);
   return { date, days: pool.length, questions: picked };
 }

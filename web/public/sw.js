@@ -1,5 +1,5 @@
 /* OFD service worker: app shell + last processed result for offline reading. */
-const VERSION = "ofd-v1";
+const VERSION = "ofd-v2";
 // mount path ("" at the root, "/OFD" behind aj124.com/OFD), taken from where this worker lives
 const BASE = new URL(self.registration.scope).pathname.replace(/\/$/, "");
 const SHELL = `${VERSION}-shell`;
@@ -63,7 +63,7 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(networkFirst(req, API, { storeOnlyOk: true }));
     return;
   }
-  if (path.startsWith("/api/")) return;
+  if (path.startsWith("/api/") || path === "/version.json") return;
   // app shell, scripts, styles, icons: network first, cached copy when offline
   event.respondWith(networkFirst(req, SHELL));
 });

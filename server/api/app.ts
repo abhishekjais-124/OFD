@@ -147,8 +147,20 @@ export function createApp(deps: AppDeps): Express {
   });
 
   if (deps.staticDir) {
-    app.use(express.static(deps.staticDir, { index: "index.html" }));
-    app.get(/^\/(?!api\/).*/, (_req, res) => res.sendFile("index.html", { root: deps.staticDir }));
+    // hashed build files never change, so they can be kept for a year; the shell, the worker and
+    // version.json must always be fetched fresh so a new release shows up at once
+    const fresh = /(?:^|\/)(?:index\.html|sw\.js|version\.json|manifest\.webmanifest)$/;
+    app.use(express.static(deps.staticDir, {
+      index: "index.html",
+      setHeaders: (res, file) => {
+        if (fresh.test(file)) res.setHeader("cache-control", "no-cache, no-store, must-revalidate");
+        else if (/[\\/]assets[\\/]/.test(file)) res.setHeader("cache-control", "public, max-age=31536000, immutable");
+      },
+    }));
+    app.get(/^\/(?!api\/).*/, (_req, res) => {
+      res.setHeader("cache-control", "no-cache, no-store, must-revalidate");
+      res.sendFile("index.html", { root: deps.staticDir });
+    });
   }
 
   app.use((err: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {

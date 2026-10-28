@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Briefing, Item, Section } from "@shared/schema";
 import { formatDateTimeIST, formatLongDateIST, greetingIST, nameFromGreetingTitle } from "@shared/ist";
-import { formatBytes } from "@shared/more";
 import { Segmented } from "../components/nav.tsx";
 import { AlertList, UpdateRow } from "../components/mail.tsx";
 import { DailyView, JobView, QuestionView } from "../components/learn.tsx";
@@ -12,7 +11,7 @@ import { ItemView } from "../components/sections.tsx";
 import { Chip, Icon } from "../components/ui.tsx";
 import { AlertCards, UpdateCards } from "../components/updates.tsx";
 import { hiddenAsDone } from "../done.ts";
-import { ActionRow, AboutRow, BriefingHeader, DayPills, NotesRow, SettingsGroup, SourcesRow, UploadRow } from "../components/more.tsx";
+import { BriefingHeader, DayPills, SettingsGroup } from "../components/more.tsx";
 import { SkyScene, WeatherIcon, type WeatherState } from "../weather.tsx";
 import { filterSections, countItems } from "../search.ts";
 
@@ -390,37 +389,17 @@ export function MorePage(p: MoreProps) {
   const b = p.briefing;
   const ctx = ctxOf(p);
   const upload = p.sourceKind === "upload";
-  const routine = b.sections.filter((s) => s.kind === "routine").flatMap((s) => s.items);
   const extra = b.sections.filter((s) => s.kind === "unknown");
   const pick = (d: string) => p.onOpenDate(d === p.todayIST ? "today" : d);
   return (
     <>
-      <BriefingHeader briefing={b} cached={p.cached} now={p.now} busy={p.busy} canRefresh={!upload} onRefresh={p.onRefresh} onReprocess={p.onReprocess} />
+      <BriefingHeader briefing={b} now={p.now} busy={p.busy} canRefresh={!upload} onRefresh={p.onRefresh} />
 
-      <SettingsGroup title="Open">
-        <div className="mlist">
-          {b.pdfUrl && <ActionRow icon={Icon.pdf()} title="Original PDF" sub={[b.source.fileName, formatBytes(b.source.size)].filter(Boolean).join(" · ")} href={b.pdfUrl} />}
-          {b.source.webViewLink && <ActionRow icon={Icon.open()} title="On Google Drive" sub="Opens the file in Drive" href={b.source.webViewLink} />}
-        </div>
-      </SettingsGroup>
-
-      {p.availableDates.length > 1 && (
+      {p.availableDates.length > 0 && (
         <SettingsGroup title="Days">
           <DayPills dates={p.availableDates} today={p.todayIST} current={upload ? null : b.date} onPick={pick} />
         </SettingsGroup>
       )}
-
-      <SettingsGroup>
-        <div className="mlist"><UploadRow onFile={p.onUpload} busy={p.busy !== null} /></div>
-      </SettingsGroup>
-
-      <SettingsGroup title="Behind the scenes">
-        <div className="mlist">
-          {routine.map((i) => <SourcesRow key={i.id} item={i} />)}
-          <NotesRow briefing={b} />
-          <AboutRow briefing={b} />
-        </div>
-      </SettingsGroup>
 
       {extra.map((s) => (
         <Group key={s.id} title={s.title} count={s.items.length}>{s.items.map((i) => <ItemView key={i.id} item={i} ctx={ctx} />)}</Group>
@@ -449,7 +428,6 @@ export function MoreLite(p: Pick<MoreProps, "busy" | "availableDates" | "onUploa
           <DayPills dates={p.availableDates} today={p.todayIST} current={null} onPick={(d) => p.onOpenDate(d === p.todayIST ? "today" : d)} />
         </SettingsGroup>
       )}
-      <SettingsGroup title="Read a PDF"><div className="mlist"><UploadRow onFile={p.onUpload} busy={p.busy !== null} /></div></SettingsGroup>
       <Signature />
     </>
   );
