@@ -48,54 +48,66 @@ export function FoldRow({ icon, title, sub, children }: { icon: ReactNode; title
   );
 }
 
-/** The date, where it came from and the two things you do to it: check Drive again, or read the PDF again. */
-export function BriefingHeader({ briefing, cached, now, busy, canRefresh, onRefresh, onReprocess }: {
-  briefing: Briefing; cached: boolean; now: Date; busy: "refresh" | "reprocess" | "upload" | null; canRefresh: boolean; onRefresh: () => void; onReprocess: () => void;
+/** The day on show, when its briefing was last updated, and one button to look for a newer one. */
+export function BriefingHeader({ briefing, now, busy, canRefresh, onRefresh }: {
+  briefing: Briefing; now: Date; busy: "refresh" | "reprocess" | "upload" | null; canRefresh: boolean; onRefresh: () => void;
 }) {
   const b = briefing;
-  const status = b.confidence === "high" ? "Everything read cleanly" : b.confidence === "low" ? "Read with OCR, lower confidence" : "Some parts could not be read";
+  const updated = new Date(b.source.modifiedTime ?? b.processedAt);
+  const routine = b.sections.filter((s) => s.kind === "routine").flatMap((s) => s.items)[0];
+  const checks = routine ? parseRoutineDetails(routine.lines) : null;
+  const warn = b.confidence !== "high" ? "Some parts could not be read" : checks && checks.blocked.length ? `${checks.blocked.length} of ${checks.ok.length + checks.blocked.length} sources were blocked` : null;
   return (
     <div className="mhead">
-      <h2 className="mhead-date">{b.date ? formatLongDateIST(b.date) : "Date unknown"}</h2>
-      <p className="mhead-file">{b.source.fileName}</p>
-      <p className="mhead-status"><span className={`sdot ${b.confidence}`} />{status}</p>
-      <p className="mhead-when" title={formatDateTimeIST(new Date(b.processedAt))}>Processed {timeAgo(new Date(b.processedAt), now)}{cached ? " · from cache" : ""}</p>
-      <div className="mhead-actions">
-        {canRefresh && (
-          <button className="qa" type="button" onClick={onRefresh} disabled={busy !== null}>
-            {Icon.refresh(busy === "refresh" ? "spin" : undefined)}<span className="qa-t">Check Drive</span><span className="qa-s">Look for a newer file</span>
-          </button>
-        )}
-        <button className="qa" type="button" onClick={onReprocess} disabled={busy !== null}>
-          {Icon.reprocess(busy === "reprocess" ? "spin" : undefined)}<span className="qa-t">Read again</span><span className="qa-s">Re-read the saved file</span>
-        </button>
+      <div className="mhead-top">
+        <div>
+          <p className="mhead-kicker">Showing</p>
+          <h2 className="mhead-date">{b.date ? formatLongDateIST(b.date) : "Date unknown"}</h2>
+        </div>
+        {b.source.webViewLink && <a className="mhead-link" href={b.source.webViewLink} target="_blank" rel="noreferrer" aria-label="Open in Google Drive" title="Open in Google Drive">{Icon.open()}</a>}
       </div>
+      <p className="mhead-status" title={formatDateTimeIST(updated)}><span className={`sdot ${warn ? "medium" : "high"}`} />Updated {timeAgo(updated, now)}</p>
+      {warn && <p className="mhead-warn">{warn}</p>}
+      {canRefresh && (
+        <button className="mhead-refresh" type="button" onClick={onRefresh} disabled={busy !== null}>
+          {Icon.refresh(busy === "refresh" ? "spin" : undefined)}<span>{busy === "refresh" ? "Checking\u2026" : "Check for update"}</span>
+        </button>
+      )}
     </div>
   );
 }
 
-/** The current Monday-to-Sunday week as pills: days with a saved briefing are tappable, the rest are dimmed. */
+/** The current Monday-to-Sunday week as a fixed row of days, then older saved days as chips. */
 export function DayPills({ dates, today, current, onPick }: { dates: string[]; today: string; current: string | null; onPick: (d: string) => void }) {
   if (!today) return null;
   const have = new Set(dates);
-  // days of other weeks that have a file (old briefings) stay reachable after the week
-  const older = dates.filter((d) => !weekDates(today).includes(d) && d < today);
+  const week = weekDates(today);
+  const older = dates.filter((d) => !week.includes(d) && d < today).sort().reverse();
   return (
-    <div className="daypills week" role="list">
-      {weekDates(today).map((d) => {
-        const { weekday, day } = weekdayParts(d);
-        const ready = have.has(d);
-        return (
-          <button key={d} role="listitem" type="button" disabled={!ready} aria-label={dayLabel(d, today)} aria-current={d === today ? "date" : undefined} className={`daypill${d === current ? " on" : ""}${d === today ? " today" : ""}`} onClick={() => onPick(d)}>
-            <span className="dp-w">{weekday}</span>
-            <span className="dp-d">{day}</span>
-          </button>
-        );
-      })}
-      {older.map((d) => (
-        <button key={d} role="listitem" type="button" className={`btn sm${d === current ? " on" : ""}`} onClick={() => onPick(d)}>{dayLabel(d, today)}</button>
-      ))}
-    </div>
+    <>
+      <div className="weekgrid" role="list">
+        {week.map((d) => {
+          const { weekday, day } = weekdayParts(d);
+          const ready = have.has(d);
+          return (
+            <button key={d} role="listitem" type="button" disabled={!ready} aria-label={dayLabel(d, today)} aria-current={d === today ? "date" : undefined} className={`daypill${d === current ? " on" : ""}${d === today ? " today" : ""}`} onClick={() => onPick(d)}>
+              <span className="dp-w">{weekday}</span>
+              <span className="dp-d">{day}</span>
+            </button>
+          );
+        })}
+      </div>
+      {older.length > 0 && (
+        <div className="older">
+          <p className="older-label">Earlier</p>
+          <div className="older-row">
+            {older.map((d) => (
+              <button key={d} type="button" className={`chip${d === current ? " accent" : ""}`} onClick={() => onPick(d)}>{dayLabel(d, today)}</button>
+            ))}
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
