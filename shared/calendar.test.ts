@@ -40,3 +40,26 @@ describe("parseCalendarStatus", () => {
     expect(parseCalendarStatus(["Something else entirely"]).recognized).toBe(false);
   });
 });
+
+import { agendaEntries, onCallWindow } from "./calendar.ts";
+
+describe("agendaEntries", () => {
+  it("splits meetings and pulls the time to the front", () => {
+    expect(agendaEntries("10:30-11:00 IST Standup (6 people); 15:00 Design review")).toEqual([
+      { time: "10:30–11:00", title: "Standup (6 people)" },
+      { time: "15:00", title: "Design review" },
+    ]);
+    expect(agendaEntries("Team sync")).toEqual([{ time: null, title: "Team sync" }]);
+    expect(agendaEntries(null)).toEqual([]);
+  });
+});
+
+describe("onCallWindow", () => {
+  const text = "shift started Wed 28 Oct 12:00 IST and runs to 11 Nov 12:00 IST";
+  it("knows whether the shift is on and how long is left", () => {
+    expect(onCallWindow(text, "2026-10-29")).toEqual({ start: "2026-10-28", end: "2026-11-11", state: "active", days: 13 });
+    expect(onCallWindow(text, "2026-10-27")).toMatchObject({ state: "upcoming", days: 1 });
+    expect(onCallWindow(text, "2026-11-12")).toMatchObject({ state: "ended" });
+    expect(onCallWindow(null, "2026-10-29")).toBeNull();
+  });
+});
